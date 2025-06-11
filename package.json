@@ -1,0 +1,35 @@
+{
+  "name": "release-summary",
+  "version": "1.0.0",
+  "description": "A library to highlight UI changes and new features in web applications",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build:bundle": "webpack --mode production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inandi/Release-Summary.git"
+  },
+  "author": "Gobinda Nandi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/inandi/Release-Summary/issues"
+  },
+  "homepage": "https://github.com/inandi/Release-Summary#readme",
+  "dependencies": {
+    "js-cookie": "^3.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "@types/node": "^20.11.0",
+    "@types/js-cookie": "^3.0.6",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1"
+  }
+}
