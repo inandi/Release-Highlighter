@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<release version="2.0.4">
+    <item class="release-highlighter--cart-summary">
+        <message>We revamped the cart summary panel. Totals are now clearer.</message>
+    </item>
+    <item class="release-highlighter--profile-avatar">
+        <message>You can now upload SVG profile avatars from the Profile menu.</message>
+    </item>
+    <item class="non-existent-on-this-page">
+        <message>This step won't show because the element is not present.</message>
+    </item>
+    <item class="release-highlighter--settings">
+        <message>You can now change your settings from the Settings menu.</message>
+    </item>
+    <item class="release-highlighter--footer">
+        <message>You can now change your settings from the Settings menu.</message>
+    </item>
+    <!-- Add more items as needed -->
+
+</release>
+
+
