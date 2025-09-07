@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <release version="1.0.0">
-  <item class="cart-summary">
-    <message>We revamped the cart summary panel. Totals are now clearer.</message>
-  </item>
-  <item class="profile-avatar">
-    <message>You can now upload SVG profile avatars from the Profile menu.</message>
-  </item>
-  <item class="non-existent-on-this-page">
-    <message>This step won't show because the element is not present.</message>
-  </item>
-  <!-- Add more items as needed -->
-  
+    <item class="cart-summary">
+        <message>We revamped the cart summary panel. Totals are now clearer.</message>
+    </item>
+    <item class="profile-avatar">
+        <message>You can now upload SVG profile avatars from the Profile menu.</message>
+    </item>
+    <item class="non-existent-on-this-page">
+        <message>This step won't show because the element is not present.</message>
+    </item>
+    <!-- Add more items as needed -->
+
 </release>
 
 
