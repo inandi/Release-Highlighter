@@ -31,10 +31,10 @@ XML Format
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <release version="1.2.3">
-  <item class="cart-summary">
+  <item class="release-highlighter--cart-summary">
     <message>We revamped the cart summary panel. Totals are now clearer.</message>
   </item>
-  <item class="profile-avatar">
+  <item class="release-highlighter--profile-avatar">
     <message>You can now upload SVG profile avatars from the Profile menu.</message>
   </item>
 </release>
