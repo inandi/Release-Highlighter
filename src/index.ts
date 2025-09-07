@@ -141,11 +141,15 @@ export class ReleaseHighlighter {
   private collectSteps(): void {
     if (!this.manifest) return;
     const steps: Step[] = [];
+    const processedClasses = new Set<string>();
     for (const item of this.manifest.items) {
+      // Skip duplicate class entries to ensure only one step per class
+      if (processedClasses.has(item.className)) continue;
       const candidates = Array.from(document.getElementsByClassName(item.className));
       const target = candidates.find((el) => isElementVisible(el));
       if (target) {
         steps.push({ element: target, message: item.message });
+        processedClasses.add(item.className);
       }
     }
     this.steps = steps;
