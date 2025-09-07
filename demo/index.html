@@ -36,8 +36,13 @@
     <script src="../dist/ReleaseHighlighter.min.js"></script>
     <script>
       window.addEventListener('load', function () {
-        // ReleaseHighlighter is exposed globally by the IIFE bundle
-        var rh = new window.ReleaseHighlighter({ xmlUrl: './release.xml' });
+        // Handle default vs named global export
+        var RH = (window.ReleaseHighlighter && (window.ReleaseHighlighter.default || window.ReleaseHighlighter));
+        if (!RH) {
+          console.error('ReleaseHighlighter global not found');
+          return;
+        }
+        var rh = new RH({ xmlUrl: './release.xml' });
         rh.start();
       });
     </script>
