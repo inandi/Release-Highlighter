@@ -9,6 +9,12 @@
     <item class="non-existent-on-this-page">
         <message>This step won't show because the element is not present.</message>
     </item>
+    <item class="release-highlighter--settings">
+        <message>You can now change your settings from the Settings menu.</message>
+    </item>
+    <item class="release-highlighter--footer">
+        <message>You can now change your settings from the Settings menu.</message>
+    </item>
     <!-- Add more items as needed -->
 
 </release>

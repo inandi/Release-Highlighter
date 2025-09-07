@@ -12,6 +12,7 @@ export interface ReleaseHighlighterOptions {
     xmlUrl: string;
     cookieName?: string;
     cookieDays?: number;
+    classPrefix?: string;
 }
 
 function getCookie(name: string): string | null {
@@ -51,6 +52,7 @@ function injectStyles(): void {
   .rh-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2147483646}
   .rh-highlight{position:fixed;box-shadow:0 0 0 3px #4f80ff,0 0 0 9999px rgba(0,0,0,0);border-radius:8px;z-index:2147483647;pointer-events:none;transition:all .2s ease}
   .rh-tooltip{position:fixed;max-width:360px;background:#fff;color:#111;border-radius:10px;box-shadow:0 12px 24px rgba(0,0,0,.2);padding:14px 16px;z-index:2147483648;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45}
+  .rh-tooltip{box-sizing:border-box;overflow-wrap:anywhere}
   .rh-tooltip .rh-header{font-weight:600;margin-bottom:8px}
   .rh-tooltip .rh-controls{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
   .rh-btn{appearance:none;border:0;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer}
@@ -105,6 +107,7 @@ export class ReleaseHighlighter {
         this.options = {
             cookieName: "release_highlighter_version",
             cookieDays: 180,
+            classPrefix: "release-highlighter--",
             ...options,
         };
     }
@@ -143,13 +146,19 @@ export class ReleaseHighlighter {
         const steps: Step[] = [];
         const processedClasses = new Set<string>();
         for (const item of this.manifest.items) {
+            // Determine effective class using configured prefix
+            const prefix = this.options.classPrefix || "";
+            const effectiveClass = item.className.startsWith(prefix)
+                ? item.className
+                : `${prefix}${item.className}`;
+
             // Skip duplicate class entries to ensure only one step per class
-            if (processedClasses.has(item.className)) continue;
-            const candidates = Array.from(document.getElementsByClassName(item.className));
+            if (processedClasses.has(effectiveClass)) continue;
+            const candidates = Array.from(document.getElementsByClassName(effectiveClass));
             const target = candidates.find((el) => isElementVisible(el));
             if (target) {
                 steps.push({ element: target, message: item.message });
-                processedClasses.add(item.className);
+                processedClasses.add(effectiveClass);
             }
         }
         this.steps = steps;
@@ -247,16 +256,31 @@ export class ReleaseHighlighter {
         body.textContent = step.message;
         stepText.textContent = `${this.currentIndex + 1} / ${this.steps.length}`;
 
-        // Tooltip position
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        const placeBelow = spaceBelow >= 140 || spaceBelow >= spaceAbove;
-        const tooltipWidth = 360;
-        const tooltipHeight = 120; // approximate
+        // Tooltip position with safe margins and actual height measurement
+        const SAFE_MARGIN = 20;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        // Constrain width to viewport minus margins, with a reasonable minimum
+        const tooltipWidth = Math.max(200, Math.min(360, viewportWidth - SAFE_MARGIN * 2));
+        this.tooltipEl.style.width = `${tooltipWidth}px`;
+
+        // Compute available space considering margins
+        const spaceBelow = viewportHeight - rect.bottom - SAFE_MARGIN;
+        const spaceAbove = rect.top - SAFE_MARGIN;
+
+        // Use actual tooltip height after content & width applied
+        let measuredHeight = this.tooltipEl.offsetHeight;
+        const tooltipHeight = measuredHeight && isFinite(measuredHeight) ? measuredHeight : 120;
+
+        const placeBelow = spaceBelow >= tooltipHeight || spaceBelow >= spaceAbove;
+
         let top = placeBelow ? rect.bottom + 12 : rect.top - tooltipHeight - 16;
-        top = Math.max(12, Math.min(top, window.innerHeight - tooltipHeight - 12));
+        top = Math.max(SAFE_MARGIN, Math.min(top, viewportHeight - tooltipHeight - SAFE_MARGIN));
+
         let left = rect.left + rect.width / 2 - tooltipWidth / 2;
-        left = Math.max(12, Math.min(left, window.innerWidth - tooltipWidth - 12));
+        left = Math.max(SAFE_MARGIN, Math.min(left, viewportWidth - tooltipWidth - SAFE_MARGIN));
+
         Object.assign(this.tooltipEl.style, {
             width: `${tooltipWidth}px`,
             left: `${Math.round(left)}px`,
@@ -265,7 +289,9 @@ export class ReleaseHighlighter {
 
         // Arrow position
         if (this.arrowEl) {
-            const arrowLeft = rect.left + rect.width / 2 - 8;
+            const arrowHalf = 8;
+            const arrowLeftRaw = rect.left + rect.width / 2 - arrowHalf;
+            const arrowLeft = Math.max(SAFE_MARGIN, Math.min(arrowLeftRaw, viewportWidth - SAFE_MARGIN - arrowHalf * 2));
             const arrowTop = placeBelow ? rect.bottom + 2 : top + tooltipHeight;
             Object.assign(this.arrowEl.style, {
                 left: `${Math.round(arrowLeft)}px`,
