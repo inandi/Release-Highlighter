@@ -1,0 +1,29 @@
+{
+    "name": "release-highlighter",
+    "version": "0.1.0",
+    "description": "Lightweight JS plugin to highlight what's new per release using an XML manifest.",
+    "main": "dist/ReleaseHighlighter.min.js",
+    "types": "dist/types/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "esbuild src/index.ts --bundle --format=iife --global-name=ReleaseHighlighter --outfile=dist/ReleaseHighlighter.min.js --target=es2018 --minify",
+        "types": "tsc --emitDeclarationOnly --declaration --declarationMap false --outDir dist/types",
+        "prepare": "npm run build && npm run types",
+        "clean": "rm -rf dist"
+    },
+    "keywords": [
+        "release",
+        "highlight",
+        "onboarding",
+        "tour",
+        "changelog"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "esbuild": "^0.23.0",
+        "typescript": "^5.6.3"
+    }
+}

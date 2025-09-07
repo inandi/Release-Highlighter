@@ -31,10 +31,10 @@ XML Format
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <release version="1.2.3">
-  <item class="cart-summary">
+  <item class="release-highlighter--cart-summary">
     <message>We revamped the cart summary panel. Totals are now clearer.</message>
   </item>
-  <item class="profile-avatar">
+  <item class="release-highlighter--profile-avatar">
     <message>You can now upload SVG profile avatars from the Profile menu.</message>
   </item>
 </release>
@@ -56,15 +56,36 @@ type Options = {
   xmlUrl: string;          // Required: URL of the XML manifest for this release
   cookieName?: string;     // Optional: cookie key (default: 'release_highlighter_version')
   cookieDays?: number;     // Optional: cookie lifetime in days (default: 180)
+  classPrefix?: string;    // Optional: prefix for CSS classes (default: 'release-highlighter--')
 }
 
-const rh = new ReleaseHighlighter({ xmlUrl: '/releases/1.2.3.xml' });
+const rh = new ReleaseHighlighter({
+  xmlUrl: '/releases/1.2.3.xml',
+  // If your XML items omit the prefix, the library will add it automatically
+  // e.g., item@class="cart" will target elements with class "release-highlighter--cart"
+  classPrefix: 'release-highlighter--'
+});
 await rh.start();
 ```
 
 Demo
 - Build the project: `npm run build`
-- Open `demo/index.html` in a browser. It loads `demo/release.xml` and highlights elements by class.
+- Start a local dev server from the project root (serves both `dist/` and `demo/`):
+
+```bash
+npx --yes http-server . -p 5174 -c-1
+```
+
+- Open `http://localhost:5174/demo/` in your browser
+
+Notes:
+- Opening `demo/index.html` directly from the filesystem will not work because the XML is fetched via `fetch()`; use an HTTP server.
+- If you prefer Python’s built-in server:
+
+```bash
+python3 -m http.server 5174
+# then open http://localhost:5174/demo/
+```
 
 Notes
 - If no items are visible on the current page, the plugin sets the cookie and does nothing (so users on other pages won’t see a partial tour).
