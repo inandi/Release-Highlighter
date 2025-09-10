@@ -1,13 +1,40 @@
+/**
+ * Release Highlighter Library
+ * 
+ * @author Gobinda Nandi
+ * @since 1.0 (July 2025)
+ * @version 1.0
+ * @copyright Copyright (c) 2025 Gobinda Nandi
+ * @license MIT
+ */
+
+/**
+ * Represents a single release item with a CSS class and a message to display.
+ *  - className: CSS class name to identify the element to highlight
+ *  - message: Tooltip message to display for the highlighted element
+ */
 export interface ReleaseItem {
     className: string;
     message: string;
 }
 
+/**
+ * Represents the release manifest containing version and release items.
+ *  - version: Version of the release
+ *  - items: Array of release items to highlight
+ */
 export interface ReleaseManifest {
     version: string;
     items: ReleaseItem[];
 }
 
+/**
+ * Configuration options for the ReleaseHighlighter.
+ *   - xmlUrl: URL to fetch the XML manifest
+ *   - cookieName: Name of the cookie to store the version
+ *   - cookieDays: Number of days the cookie should persist
+ *   - classPrefix: Optional prefix for CSS classes
+ */
 export interface ReleaseHighlighterOptions {
     xmlUrl: string;
     cookieName?: string;
@@ -15,6 +42,12 @@ export interface ReleaseHighlighterOptions {
     classPrefix?: string;
 }
 
+/**
+ * Retrieves the value of a cookie by its name.
+ * 
+ * @param {string} name - The name of the cookie to retrieve.
+ * @returns {string|null} The value of the cookie if found, otherwise null.
+ */
 function getCookie(name: string): string | null {
     const nameEq = name + "=";
     const parts = document.cookie.split("; ");
@@ -26,11 +59,25 @@ function getCookie(name: string): string | null {
     return null;
 }
 
+/**
+ * Sets a cookie with a specified name, value, and expiration in days.
+ * 
+ * @param {string} name - The name of the cookie to set.
+ * @param {string} value - The value of the cookie.
+ * @param {number} days - The number of days until the cookie expires.
+ * @returns {void}
+ */
 function setCookie(name: string, value: string, days: number): void {
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
     document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Expires=${expires}; Path=/; SameSite=Lax`;
 }
 
+/**
+ * Checks if an element is visible on the page.
+ * 
+ * @param {Element} element - The DOM element to check visibility for.
+ * @returns {boolean} True if the element is visible, otherwise false.
+ */
 function isElementVisible(element: Element): boolean {
     if (!(element instanceof HTMLElement)) return false;
     const style = window.getComputedStyle(element);
@@ -135,12 +182,23 @@ export class ReleaseHighlighter {
         }
     }
 
+    /**
+     * Fetches the XML manifest from the specified URL.
+     * 
+     * @returns {Promise<string>} A promise that resolves to the XML string.
+     * @throws {Error} If the fetch request fails.
+     */
     private async fetchXml(): Promise<string> {
         const res = await fetch(this.options.xmlUrl, { credentials: "same-origin" });
         if (!res.ok) throw new Error(`Failed to load XML: ${res.status}`);
         return await res.text();
     }
 
+    /**
+     * Parses the XML manifest and collects steps for highlighting.
+     * 
+     * @returns {void}
+     */
     private collectSteps(): void {
         if (!this.manifest) return;
         const steps: Step[] = [];
@@ -235,6 +293,12 @@ export class ReleaseHighlighter {
         document.addEventListener("keydown", this.boundKeydown);
     }
 
+    /**
+     * Displays a specific step in the highlighting process.
+     * 
+     * @param {number} index - The index of the step to display.
+     * @returns {void}
+     */
     private showStep(index: number): void {
         if (!this.tooltipEl || !this.highlightEl || !this.overlayEl) return;
         this.currentIndex = Math.max(0, Math.min(index, this.steps.length - 1));
