@@ -1,95 +1,171 @@
-Release Highlighter (v1.0)
-====================
+# release-highlighter
 
-Lightweight TypeScript/JS plugin that highlights what's new in your latest release using a simple XML manifest. It overlays your app, points to updated UI sections by class name, and guides users with Next/Skip. Shown once per user via a browser cookie.
+Simple, highly customizable **release-journey / product-tour** plugin for the web.
+Point it at elements on your page and it walks users through what's new with an
+overlay, spotlight, and tooltip. JS-first config, full theming, lifecycle hooks,
+and an optional JSON manifest. Zero runtime dependencies.
 
-Features
-- Highlights elements by CSS class when visible on the current page
-- Overlay + focus box + tooltip with message and step counter
-- Next and Skip controls; auto-advances if an element scrolls out of view
-- Reads version from XML; stores that version in a cookie to show only once
-- Zero-dependency, ~small single file bundle
+- JS/TS config as the primary API (define steps in code)
+- Theme via CSS variables (colors, radius, fonts, dark mode) or ship your own CSS
+- Rich content: plain text, trusted HTML, or a fully custom render function
+- Lifecycle hooks (`start`, `step`, `next`, `prev`, `skip`, `finish`) and per-step conditions
+- Placement control (`auto`/`top`/`bottom`/`left`/`right`), spotlight padding, scroll-into-view
+- Pluggable persistence (cookie / localStorage / memory / custom) to show once per release
+- Ships ESM, CJS, and a browser IIFE global; TypeScript types included
 
-Install
+## Install
+
 ```bash
-npm install
-npm run build
+npm install release-highlighter
 ```
 
-Usage
-Include the bundled script in your page and point it to your release XML.
+Or via CDN (browser global `ReleaseHighlighter`):
+
 ```html
-<script src="/path/to/ReleaseHighlighter.min.js"></script>
-<script>
-  // Show highlights once per release version defined in the XML
-  var rh = new window.ReleaseHighlighter({ xmlUrl: '/releases/1.2.3.xml' });
-  rh.start();
-</script>
+<script src="https://unpkg.com/release-highlighter"></script>
 ```
 
-XML Format
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<release version="1.2.3">
-  <item class="release-highlighter--cart-summary">
-    <message>We revamped the cart summary panel. Totals are now clearer.</message>
-  </item>
-  <item class="release-highlighter--profile-avatar">
-    <message>You can now upload SVG profile avatars from the Profile menu.</message>
-  </item>
-</release>
-```
+## Quick start (JS-first)
 
-- version: required. Used to persist a cookie so each user sees the tour once per release.
-- item@class: required. A CSS class used to find target elements on the page.
-- message: required. The text shown in the tooltip while highlighting the element.
-
-Behavior
-- Only items whose class is present and visible on the current page are shown.
-- The tooltip is positioned near the target, with an arrow and step counter.
-- Users can click Next to continue or Skip to dismiss. Hitting the end finishes automatically.
-- When finished, a cookie like `release_highlighter_version=1.2.3` is set for 180 days (configurable).
-
-API
 ```ts
-type Options = {
-  xmlUrl: string;          // Required: URL of the XML manifest for this release
-  cookieName?: string;     // Optional: cookie key (default: 'release_highlighter_version')
-  cookieDays?: number;     // Optional: cookie lifetime in days (default: 180)
-  classPrefix?: string;    // Optional: prefix for CSS classes (default: 'release-highlighter--')
-}
+import { ReleaseHighlighter } from "release-highlighter";
 
 const rh = new ReleaseHighlighter({
-  xmlUrl: '/releases/1.2.3.xml',
-  // If your XML items omit the prefix, the library will add it automatically
-  // e.g., item@class="cart" will target elements with class "release-highlighter--cart"
-  classPrefix: 'release-highlighter--'
+  version: "2.1.0", // shown once per version (persisted)
+  theme: { accent: "#4f80ff", radius: "10px", darkMode: "auto" },
+  labels: { next: "Got it", done: "Finish" },
+  steps: [
+    { target: ".cart-summary", title: "New cart", body: "Totals are clearer.", placement: "bottom" },
+    { target: "#avatar", body: "Upload <b>SVG avatars</b>.", html: true },
+    { target: () => document.querySelector(".sidebar a"), body: "Jump around faster." },
+  ],
+  on: {
+    finish: () => console.log("done"),
+  },
 });
+
+rh.start();
+```
+
+The default styles are injected automatically. If you prefer to manage CSS
+yourself, set `injectStyles: false` and import the stylesheet (or copy it):
+
+```ts
+import "release-highlighter/styles.css";
+```
+
+## Load steps from a JSON manifest
+
+Steps can come from a remote JSON manifest instead of inline config.
+
+```ts
+const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
+rh.start();
+```
+
+Manifest shape (a bare `Step[]` array is also accepted):
+
+```json
+{
+  "version": "2.1.0",
+  "expires": "2026-12-31T23:59:59Z",
+  "steps": [
+    { "target": ".cart-summary", "title": "New cart", "body": "Totals are clearer." },
+    { "target": "#avatar", "body": "Upload SVG avatars." }
+  ]
+}
+```
+
+`expires` is optional (UTC / ISO date). On or after that moment the journey is
+never shown. Only a single `version` is supported per manifest.
+
+## Options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `steps` | `Step[]` | `[]` | Steps to run. Optional when loading from a manifest. |
+| `version` / `id` | `string` | – | Identity used for "show once" persistence. |
+| `theme` | `Theme` | – | Colors, radius, font, `darkMode`, `zIndex` (mapped to CSS variables). |
+| `labels` | `Partial<Labels>` | `Next/Back/Skip/Done` | Global control labels. |
+| `storage` | `'cookie' \| 'localStorage' \| 'memory' \| StorageAdapter` | `'cookie'` | Persistence backend. |
+| `storageKey` | `string` | `release_highlighter` | Storage key. |
+| `cookieDays` | `number` | `180` | Cookie lifetime (cookie adapter only). |
+| `force` | `boolean` | `false` | Always show, ignore stored state. |
+| `expiresAt` | `string \| number \| Date` | – | Never show on/after this UTC time (overrides `force`). |
+| `placement` | `Placement` | `'auto'` | Default tooltip placement. |
+| `padding` | `number` | `8` | Spotlight gap (px) around targets. |
+| `scrollIntoView` | `boolean` | `true` | Scroll target into view before showing. |
+| `autoAdvanceOnHidden` | `boolean` | `true` | Advance if the target scrolls out of view. |
+| `closeOnOverlayClick` | `boolean` | `true` | Advance when the dimmed overlay is clicked. |
+| `keyboard` | `boolean` | `true` | Arrow / Enter / Escape controls. |
+| `skipHiddenTargets` | `boolean` | `true` | Skip steps whose target is not visible. |
+| `injectStyles` | `boolean` | `true` | Inject default CSS (set false to use your own). |
+| `on` | `Hooks` | – | Lifecycle callbacks. |
+
+### Step shape
+
+```ts
+type Step = {
+  target: string | Element | (() => Element | null);
+  title?: string;
+  body?: string;
+  html?: boolean;                 // treat title/body as trusted HTML
+  placement?: "auto" | "top" | "bottom" | "left" | "right";
+  padding?: number;
+  labels?: Partial<Labels>;
+  scrollIntoView?: boolean;
+  when?: () => boolean;           // skip when false
+  beforeShow?: (step, api) => void;
+  afterShow?: (step, api) => void;
+  render?: (step, api) => string | HTMLElement; // custom tooltip content
+  data?: Record<string, unknown>;
+};
+```
+
+The `api` passed to hooks and `render` exposes `next()`, `prev()`, `goTo(i)`,
+`skip()`, `finish()`, and read-only `index` / `total`.
+
+## Theming
+
+All visuals key off CSS variables on the `.rh-root` container, so you can theme
+via the `theme` option or from your own stylesheet:
+
+```css
+.rh-root {
+  --rh-accent: #10b981;
+  --rh-radius: 14px;
+  --rh-bg: #0b1220;
+  --rh-text: #f5f7fa;
+}
+```
+
+Set `theme.darkMode` to `"auto"` (follows `prefers-color-scheme`), `true`, or
+`false`.
+
+## Public API
+
+```ts
+const rh = new ReleaseHighlighter(options);
 await rh.start();
+rh.next();
+rh.prev();
+rh.goTo(0);
+rh.skip();     // marks as seen
+rh.finish();   // marks as seen
+rh.destroy();  // tear down without marking as seen
 ```
 
-Demo
-- Build the project: `npm run build`
-- Start a local dev server from the project root (serves both `dist/` and `demo/`):
+## Demo
 
 ```bash
-npx --yes http-server . -p 5174 -c-1
+npm run build
+npm run dev
+# open http://localhost:5174/demo/
 ```
 
-- Open `http://localhost:5174/demo/` in your browser
+The demo runs a journey from a JSON manifest. Serve it over HTTP (not `file://`)
+because the manifest is fetched with `fetch()`.
 
-Notes:
-- Opening `demo/index.html` directly from the filesystem will not work because the XML is fetched via `fetch()`; use an HTTP server.
-- If you prefer Python’s built-in server:
+## License
 
-```bash
-python3 -m http.server 5174
-# then open http://localhost:5174/demo/
-```
-
-Notes
-- If no items are visible on the current page, the plugin sets the cookie and does nothing (so users on other pages won’t see a partial tour).
-- Images/videos in messages are planned for a future version; for now the `<message>` is text-only.
-
-License
 MIT

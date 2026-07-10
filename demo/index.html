@@ -305,25 +305,37 @@
         </main>
     </div>
 
-    <div class="footer release-highlighter--footer">
+    <div class="footer release-highlighter--footer release-highlighter--footer-about">
         © 2025 ReleaseHighlighter Demo
     </div>
 
-    <script src="../dist/ReleaseHighlighter.min.js"></script>
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="run-json">Run JSON manifest journey</button>
+    </div>
+
+    <script src="../dist/release-highlighter.iife.js"></script>
     <script>
         window.addEventListener('load', function () {
-            // Handle default vs named global export
-            var RH = (window.ReleaseHighlighter && (window.ReleaseHighlighter.default || window.ReleaseHighlighter));
-            if (!RH) {
-                console.error('ReleaseHighlighter global not found');
+            if (!window.ReleaseHighlighter) {
+                console.error('ReleaseHighlighter global not found. Run `npm run build` first.');
                 return;
             }
-            // Force-show: clear default cookie and use a unique cookie name per load
-            try {
-                document.cookie = 'release_highlighter_version=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; SameSite=Lax';
-            } catch (e) { }
-            var rh = new RH({ xmlUrl: './release.xml', cookieName: 'rh_dev_' + Date.now() });
-            rh.start();
+            var ReleaseHighlighter = window.ReleaseHighlighter;
+
+            // Set to true to ignore the "show once" cookie and always show.
+            var IGNORE_COOKIE = true;
+
+            // Load steps from a remote JSON manifest. Shown once per version via
+            // a cookie (validated against the manifest "version") unless
+            // IGNORE_COOKIE is true.
+            function runJson(force) {
+                ReleaseHighlighter.fromJson('./release.json', { force: IGNORE_COOKIE || !!force })
+                    .then(function (rh) { rh.start(); })
+                    .catch(function (e) { console.error(e); });
+            }
+
+            document.getElementById('run-json').addEventListener('click', function () { runJson(true); });
+            runJson(false);
         });
     </script>
 </body>
