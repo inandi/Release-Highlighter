@@ -1,3 +1,17 @@
+/**
+ * Release Highlighter - UI layer
+ *
+ * @file Rendering and positioning for overlay, highlight, tooltip, and arrow.
+ * @license MIT
+ *
+ * Simple, highly customizable release-journey / product-tour plugin for the web.
+ *
+ * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
+ * @since 1.1.1
+ * @version 1.1.1
+ * @copyright (c) 2026 Gobinda Nandi
+ */
+
 import type { JourneyApi, Labels, Placement, Step, Theme } from "./types";
 import { applyTheme } from "./styles";
 import { viewportSize } from "./dom";
@@ -23,6 +37,12 @@ export interface RenderContext {
 
 const SAFE_MARGIN = 20;
 
+/**
+ * UI layer responsible for rendering and positioning the overlay, highlight,
+ * tooltip, and arrow. It does not manage step flow logic; that is handled by core.
+ *
+ * @internal
+ */
 export class Ui {
     private root: HTMLDivElement;
     private overlay: HTMLDivElement;
@@ -30,40 +50,70 @@ export class Ui {
     private tooltip: HTMLDivElement;
     private arrow: HTMLDivElement;
     private handlers: UiHandlers;
+    private readonly classPrefix: string | null;
 
-    constructor(theme: Theme | undefined, handlers: UiHandlers) {
+    /**
+     * Create a UI instance.
+     *
+     * @param theme Theme overrides applied to the injected root
+     * @param classPrefix Optional additional CSS class prefix (e.g. "release-highlighter--")
+     * @param handlers Callbacks for user interactions
+     * @internal
+     */
+    constructor(theme: Theme | undefined, classPrefix: string | undefined, handlers: UiHandlers) {
         this.handlers = handlers;
-        this.root = el("div", "rh-root");
+        this.classPrefix = classPrefix && classPrefix.trim().length > 0 ? classPrefix : null;
+        this.root = el("div", classes("rh-root", pref(this.classPrefix, "root")));
         applyTheme(this.root, theme);
 
-        this.overlay = el("div", "rh-overlay");
+        this.overlay = el("div", classes("rh-overlay", pref(this.classPrefix, "overlay")));
         this.overlay.setAttribute("role", "dialog");
         this.overlay.setAttribute("aria-modal", "true");
         this.overlay.addEventListener("click", (e) => {
             if (e.target === this.overlay) this.handlers.onOverlayClick();
         });
 
-        this.highlight = el("div", "rh-highlight");
-        this.tooltip = el("div", "rh-tooltip");
-        this.arrow = el("div", "rh-arrow");
+        this.highlight = el("div", classes("rh-highlight", pref(this.classPrefix, "highlight")));
+        this.tooltip = el("div", classes("rh-tooltip", pref(this.classPrefix, "tooltip")));
+        this.arrow = el("div", classes("rh-arrow", pref(this.classPrefix, "arrow")));
 
         this.root.append(this.overlay, this.highlight, this.tooltip, this.arrow);
     }
 
+    /**
+     * Inject the UI root into the document.
+     * @internal
+     */
     mount(): void {
         document.body.appendChild(this.root);
     }
 
+    /**
+     * Remove the UI root from the document.
+     * @internal
+     */
     destroy(): void {
         this.root.parentElement?.removeChild(this.root);
     }
 
+    /**
+     * Render tooltip content and position all UI elements for the given context.
+     *
+     * @param ctx Context describing the current step and target geometry
+     * @internal
+     */
     render(ctx: RenderContext): void {
         this.overlay.style.pointerEvents = ctx.closeOnOverlayClick ? "auto" : "none";
         this.renderContent(ctx);
         this.position(ctx);
     }
 
+    /**
+     * Populate the tooltip DOM from the `Step` definition or custom renderer.
+     *
+     * @param ctx Render context providing content and labels
+     * @internal
+     */
     private renderContent(ctx: RenderContext): void {
         const { step, api, labels } = ctx;
         this.tooltip.textContent = "";
@@ -79,31 +129,45 @@ export class Ui {
         }
 
         if (step.title) {
-            const header = el("div", "rh-header");
+            const header = el("div", classes("rh-header", pref(this.classPrefix, "header")));
             setContent(header, step.title, step.html);
             this.tooltip.appendChild(header);
         }
         if (step.body) {
-            const body = el("div", "rh-body");
+            const body = el("div", classes("rh-body", pref(this.classPrefix, "body")));
             setContent(body, step.body, step.html);
             this.tooltip.appendChild(body);
         }
 
-        const controls = el("div", "rh-controls");
-        const stepText = el("div", "rh-step");
+        const controls = el("div", classes("rh-controls", pref(this.classPrefix, "controls")));
+        const stepText = el("div", classes("rh-step", pref(this.classPrefix, "step")));
         stepText.textContent = `${ctx.index + 1} / ${ctx.total}`;
         controls.appendChild(stepText);
 
         if (ctx.index > 0) {
-            controls.appendChild(button(labels.prev, "rh-btn-ghost", this.handlers.onPrev));
+            controls.appendChild(this.button(labels.prev, classes("rh-btn-ghost", pref(this.classPrefix, "btn-ghost")), this.handlers.onPrev));
         }
-        controls.appendChild(button(labels.skip, "rh-btn-ghost", this.handlers.onSkip));
+        controls.appendChild(this.button(labels.skip, classes("rh-btn-ghost", pref(this.classPrefix, "btn-ghost")), this.handlers.onSkip));
         const isLast = ctx.index === ctx.total - 1;
-        controls.appendChild(button(isLast ? labels.done : labels.next, "rh-btn-primary", this.handlers.onNext));
+        controls.appendChild(
+            this.button(
+                isLast ? labels.done : labels.next,
+                classes("rh-btn-primary", pref(this.classPrefix, "btn-primary")),
+                this.handlers.onNext,
+            ),
+        );
 
         this.tooltip.appendChild(controls);
     }
 
+    /**
+     * Compute and apply positions for highlight, tooltip, and arrow while
+     * constraining them to the viewport with a 20px safe margin.
+     *
+     * @param ctx Render context providing target rect and dimensions
+     * @remarks Tooltip width is also constrained by viewport minus the safe margin.
+     * @internal
+     */
     private position(ctx: RenderContext): void {
         const rect = ctx.element.getBoundingClientRect();
         const pad = ctx.padding;
@@ -138,6 +202,20 @@ export class Ui {
         this.positionArrow(side, rect, top, left, tooltipWidth, tooltipHeight, vw, vh);
     }
 
+    /**
+     * Position the arrow pointing from the tooltip towards the target, constrained
+     * to the viewport safe margin.
+     *
+     * @param side Resolved tooltip side
+     * @param rect Target element bounding rect
+     * @param tooltipTop Top position of the tooltip (px)
+     * @param tooltipLeft Left position of the tooltip (px)
+     * @param tooltipWidth Tooltip width (px)
+     * @param tooltipHeight Tooltip height (px)
+     * @param vw Viewport width (px)
+     * @param vh Viewport height (px)
+     * @internal
+     */
     private positionArrow(
         side: Exclude<Placement, "auto">,
         rect: DOMRect,
@@ -162,8 +240,39 @@ export class Ui {
             style.transform = side === "right" ? "rotate(90deg)" : "rotate(-90deg)";
         }
     }
+
+    /**
+     * Create a styled button for the tooltip controls, including optional
+     * prefixed classes.
+     *
+     * @param label Button text
+     * @param variantClasses Variant class names (e.g. "rh-btn-primary")
+     * @param onClick Click handler
+     * @returns The created HTMLButtonElement
+     * @internal
+     */
+    private button(label: string, variantClasses: string, onClick: () => void): HTMLButtonElement {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = classes("rh-btn", pref(this.classPrefix, "btn"), variantClasses);
+        btn.textContent = label;
+        btn.addEventListener("click", onClick);
+        return btn;
+    }
 }
 
+/**
+ * Resolve requested placement to an actual side based on available space.
+ *
+ * @param requested Desired placement or "auto"
+ * @param rect Target rect
+ * @param tw Tooltip width
+ * @param th Tooltip height
+ * @param vw Viewport width
+ * @param vh Viewport height
+ * @returns Final placement excluding "auto"
+ * @internal
+ */
 function resolvePlacement(
     requested: Placement,
     rect: DOMRect,
@@ -186,26 +295,68 @@ function resolvePlacement(
     return space.bottom >= space.top ? "bottom" : "top";
 }
 
+/**
+ * Create an element with a given className.
+ *
+ * @param tag Tag name to create
+ * @param className Space-separated class list
+ * @returns The created div element
+ * @internal
+ */
 function el(tag: string, className: string): HTMLDivElement {
     const node = document.createElement(tag) as HTMLDivElement;
     node.className = className;
     return node;
 }
 
-function button(label: string, variant: string, onClick: () => void): HTMLButtonElement {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = `rh-btn ${variant}`;
-    btn.textContent = label;
-    btn.addEventListener("click", onClick);
-    return btn;
+/**
+ * Join class names, skipping null/undefined/empty values.
+ *
+ * @param names Array of possible class names
+ * @returns A space-separated class string
+ * @internal
+ */
+function classes(...names: Array<string | null | undefined>): string {
+    return names.filter(Boolean).join(" ");
 }
 
+/**
+ * Build a class name using a prefix; returns null when prefix is not set.
+ *
+ * @param prefix Base prefix (e.g. "release-highlighter--") or null
+ * @param name Suffix (e.g. "tooltip")
+ * @returns Concatenated class or null
+ * @internal
+ */
+function pref(prefix: string | null, name: string): string | null {
+    if (!prefix) return null;
+    return `${prefix}${name}`;
+}
+
+/**
+ * Set node content as HTML or text depending on the `html` flag.
+ *
+ * @param node Target node to write to
+ * @param content Raw string content
+ * @param html When true, assigns via innerHTML; otherwise textContent
+ * @internal
+ */
 function setContent(node: HTMLElement, content: string, html?: boolean): void {
     if (html) node.innerHTML = content;
     else node.textContent = content;
 }
 
+/**
+ * Clamp a number between [min, max].
+ *
+ * @param value Input value
+ * @param min Minimum
+ * @param max Maximum
+ * @returns Clamped value
+ * @internal
+ */
 function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(value, Math.max(min, max)));
 }
+
+// end of file

@@ -1,3 +1,17 @@
+/**
+ * Release Highlighter - DOM utilities
+ *
+ * @file DOM helpers for visibility checks, target resolution, and viewport size.
+ * @license MIT
+ *
+ * Simple, highly customizable release-journey / product-tour plugin for the web.
+ *
+ * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
+ * @since 1.1.1
+ * @version 1.1.1
+ * @copyright (c) 2026 Gobinda Nandi
+ */
+
 import type { StepTarget } from "./types";
 
 /**
@@ -24,6 +38,10 @@ export function isElementRendered(element: Element | null): element is HTMLEleme
  *   the first rendered match wins, otherwise the first match. Only one element
  *   per target is ever used.
  * - Element / function targets are returned as-is (subject to the render check).
+ *
+ * @param target CSS selector, Element, or a resolver function returning an Element
+ * @param requireRendered When true, accept only currently rendered (visible, laid out) elements
+ * @returns The chosen HTMLElement, or null if no suitable element is found
  */
 export function pickTarget(target: StepTarget, requireRendered: boolean): HTMLElement | null {
     if (typeof target === "string") {
@@ -40,6 +58,11 @@ export function pickTarget(target: StepTarget, requireRendered: boolean): HTMLEl
     return el;
 }
 
+/**
+ * Read current viewport width and height in CSS pixels.
+ *
+ * @returns Object with `width` and `height` values
+ */
 export function viewportSize(): { width: number; height: number } {
     return {
         width: window.innerWidth || document.documentElement.clientWidth,

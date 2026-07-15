@@ -155,14 +155,16 @@ rh.finish();   // marks as seen
 rh.destroy();  // tear down without marking as seen
 ```
 
-## Demo
+## Demo (run locally)
 
 ```bash
+npm install
 npm run build
 npm run dev
 # open http://localhost:5174/demo/
 ```
 
+The dev server serves the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
 The demo runs a journey from a JSON manifest. Serve it over HTTP (not `file://`)
 because the manifest is fetched with `fetch()`.
 

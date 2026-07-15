@@ -1,4 +1,18 @@
 /**
+ * Release Highlighter - Type definitions
+ *
+ * @file Public types and options.
+ * @license MIT
+ *
+ * Simple, highly customizable release-journey / product-tour plugin for the web.
+ *
+ * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
+ * @since 1.1.1
+ * @version 1.1.1
+ * @copyright (c) 2026 Gobinda Nandi
+ */
+
+/**
  * Where a step's tooltip is placed relative to its target element.
  * `auto` picks the side with the most available space.
  */
@@ -119,13 +133,21 @@ export interface ReleaseHighlighterOptions {
     /** Theme overrides mapped to CSS variables. */
     theme?: Theme;
 
-    /** Persistence backend. Defaults to 'cookie'. */
+    /** Persistence backend.
+     * @default 'cookie'
+     */
     storage?: StorageOption;
-    /** Storage key. Defaults to 'release_highlighter'. */
+    /** Storage key.
+     * @default 'release_highlighter'
+     */
     storageKey?: string;
-    /** How long the cookie lives (only used by the cookie adapter). */
+    /** How long the cookie lives (only used by the cookie adapter).
+     * @default 180
+     */
     cookieDays?: number;
-    /** Always show, ignoring stored state. Handy for dev/demos. */
+    /** Always show, ignoring stored state. Handy for dev/demos.
+     * @default false
+     */
     force?: boolean;
     /**
      * Do not show on or after this moment. Accepts a UTC/ISO date string
@@ -133,23 +155,47 @@ export interface ReleaseHighlighterOptions {
      */
     expiresAt?: string | number | Date;
 
-    /** Default placement when a step does not specify one. */
+    /** Default placement when a step does not specify one.
+     * @default 'auto'
+     */
     placement?: Placement;
-    /** Default spotlight gap (px) around targets. */
+    /** Default spotlight gap (px) around targets.
+     * @default 8
+     */
     padding?: number;
-    /** Scroll targets into view before showing. Defaults to true. */
+    /** Scroll targets into view before showing.
+     * @default true
+     */
     scrollIntoView?: boolean;
-    /** Advance automatically if the current target scrolls out of view. */
+    /** Advance automatically if the current target scrolls out of view.
+     * @default true
+     */
     autoAdvanceOnHidden?: boolean;
-    /** Allow closing by clicking the dimmed overlay. Defaults to true. */
+    /** Allow closing by clicking the dimmed overlay.
+     * @default true
+     */
     closeOnOverlayClick?: boolean;
-    /** Enable arrow/enter/escape keyboard controls. Defaults to true. */
+    /** Enable arrow/enter/escape keyboard controls.
+     * @default true
+     */
     keyboard?: boolean;
-    /** Skip steps whose target is not currently visible. Defaults to true. */
+    /** Skip steps whose target is not currently visible.
+     * @default true
+     */
     skipHiddenTargets?: boolean;
 
-    /** Inject the default stylesheet. Set false to ship your own CSS. */
+    /** Inject the default stylesheet. Set false to ship your own CSS.
+     * @default true
+     */
     injectStyles?: boolean;
+
+    /**
+     * Optional additional CSS class prefix applied to all injected UI elements
+     * in addition to the built-in `rh-*` classes. For example, when set to
+     * "release-highlighter--", the tooltip will also carry the class
+     * "release-highlighter--tooltip". Defaults to none.
+     */
+    classPrefix?: string;
 
     /** Lifecycle hooks. */
     on?: Hooks;
