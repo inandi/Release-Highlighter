@@ -16,19 +16,19 @@ and an optional JSON manifest. Zero runtime dependencies.
 ## Install
 
 ```bash
-npm install release-highlighter
+npm install @inandi/release-highlighter
 ```
 
 Or via CDN (browser global `ReleaseHighlighter`):
 
 ```html
-<script src="https://unpkg.com/release-highlighter"></script>
+<script src="https://unpkg.com/@inandi/release-highlighter"></script>
 ```
 
 ## Quick start (JS-first)
 
 ```ts
-import { ReleaseHighlighter } from "release-highlighter";
+import { ReleaseHighlighter } from "@inandi/release-highlighter";
 
 const rh = new ReleaseHighlighter({
   version: "2.1.0", // shown once per version (persisted)
@@ -51,7 +51,7 @@ The default styles are injected automatically. If you prefer to manage CSS
 yourself, set `injectStyles: false` and import the stylesheet (or copy it):
 
 ```ts
-import "release-highlighter/styles.css";
+import "@inandi/release-highlighter/styles.css";
 ```
 
 ## Load steps from a JSON manifest
