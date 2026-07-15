@@ -1,0 +1,118 @@
+.rh-root {
+  --rh-accent: #4f80ff;
+  --rh-accent-text: #ffffff;
+  --rh-bg: #ffffff;
+  --rh-text: #111111;
+  --rh-muted: #667085;
+  --rh-overlay: rgba(0, 0, 0, 0.55);
+  --rh-radius: 10px;
+  --rh-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  --rh-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --rh-z: 2147483646;
+}
+
+.rh-root[data-rh-dark="true"] {
+  --rh-bg: #1f2430;
+  --rh-text: #f5f7fa;
+  --rh-muted: #a7b0c0;
+  --rh-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  .rh-root[data-rh-dark="auto"] {
+    --rh-bg: #1f2430;
+    --rh-text: #f5f7fa;
+    --rh-muted: #a7b0c0;
+    --rh-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.rh-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--rh-overlay);
+  z-index: var(--rh-z);
+}
+
+.rh-highlight {
+  position: fixed;
+  box-shadow: 0 0 0 3px var(--rh-accent), 0 0 0 9999px rgba(0, 0, 0, 0);
+  border-radius: var(--rh-radius);
+  z-index: calc(var(--rh-z) + 1);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.rh-tooltip {
+  position: fixed;
+  max-width: 360px;
+  box-sizing: border-box;
+  background: var(--rh-bg);
+  color: var(--rh-text);
+  border-radius: var(--rh-radius);
+  box-shadow: var(--rh-shadow);
+  padding: 14px 16px;
+  z-index: calc(var(--rh-z) + 2);
+  font-family: var(--rh-font);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.rh-tooltip .rh-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.rh-tooltip .rh-body :first-child {
+  margin-top: 0;
+}
+
+.rh-tooltip .rh-body :last-child {
+  margin-bottom: 0;
+}
+
+.rh-tooltip .rh-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.rh-btn {
+  appearance: none;
+  border: 0;
+  border-radius: calc(var(--rh-radius) - 2px);
+  padding: 8px 12px;
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rh-btn-primary {
+  background: var(--rh-accent);
+  color: var(--rh-accent-text);
+}
+
+.rh-btn-ghost {
+  background: color-mix(in srgb, var(--rh-text) 8%, transparent);
+  color: var(--rh-text);
+}
+
+.rh-step {
+  font-size: 12px;
+  color: var(--rh-muted);
+  margin-right: auto;
+}
+
+.rh-arrow {
+  position: fixed;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 10px solid var(--rh-bg);
+  z-index: calc(var(--rh-z) + 2);
+}
