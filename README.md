@@ -59,7 +59,7 @@ import "@inandi/release-highlighter/style.css";
 Steps can come from a remote JSON manifest instead of inline config.
 
 ```ts
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
+const rh = await ReleaseHighlighter.fromJson("./release.json");
 rh.start();
 ```
 
