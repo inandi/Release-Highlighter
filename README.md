@@ -1,6 +1,6 @@
 # release-highlighter
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.2-green" />
+  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.3-green" />
   <img alt="Updated On" src="https://img.shields.io/badge/Updated%20On-July%202026-blue" />
   <img alt="Released On" src="https://img.shields.io/badge/Released%20On-July%202026-orange" />
 </p>
