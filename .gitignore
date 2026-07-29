@@ -144,3 +144,4 @@ dist
 
 package-lock.json
 .cursor/
+release.sh
