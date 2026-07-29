@@ -8,13 +8,14 @@
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
-import css from "./styles.css";
+import css from "./style.css";
 import type { Theme } from "./types";
 
+// Unique identifier for the stylesheet
 const STYLE_ID = "rh-styles";
 
 /**
@@ -23,24 +24,29 @@ const STYLE_ID = "rh-styles";
  */
 export function injectStyles(): void {
     if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
+
+    // Create a style element and add it to the head
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = css;
+
+    // Append the style element to the head
     document.head.appendChild(style);
 }
 
+// CSS variables for the theme
 const THEME_VARS: Record<keyof Theme, string | null> = {
-    accent: "--rh-accent",
-    accentText: "--rh-accent-text",
-    background: "--rh-bg",
-    text: "--rh-text",
-    mutedText: "--rh-muted",
-    overlay: "--rh-overlay",
-    radius: "--rh-radius",
-    shadow: "--rh-shadow",
-    fontFamily: "--rh-font",
-    zIndex: "--rh-z",
-    darkMode: null,
+    accent: "--rh-accent",  // CSS variable for the accent color
+    accentText: "--rh-accent-text",  // CSS variable for the accent text color
+    background: "--rh-bg",  // CSS variable for the background color
+    text: "--rh-text",  // CSS variable for the text color
+    mutedText: "--rh-muted",  // CSS variable for the muted text color
+    overlay: "--rh-overlay",  // CSS variable for the overlay color
+    radius: "--rh-radius",  // CSS variable for the radius
+    shadow: "--rh-shadow",  // CSS variable for the shadow color
+    fontFamily: "--rh-font",  // CSS variable for the font family
+    zIndex: "--rh-z",  // CSS variable for the z-index
+    darkMode: null,  // CSS variable for the dark mode
 };
 
 /**

@@ -1,17 +1,19 @@
 # release-highlighter
+<p>
+  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.2-green" />
+  <img alt="Updated On" src="https://img.shields.io/badge/Updated%20On-July%202026-blue" />
+  <img alt="Released On" src="https://img.shields.io/badge/Released%20On-July%202026-orange" />
+</p>
 
-Simple, highly customizable **release-journey / product-tour** plugin for the web.
-Point it at elements on your page and it walks users through what's new with an
-overlay, spotlight, and tooltip. JS-first config, full theming, lifecycle hooks,
-and an optional JSON manifest. Zero runtime dependencies.
+Simple **release-journey / product-tour** plugin for the web.
+Define steps in a JSON file, point them at CSS selectors, and it walks users
+through what's new with an overlay, spotlight, and tooltip.
 
-- JS/TS config as the primary API (define steps in code)
-- Theme via CSS variables (colors, radius, fonts, dark mode) or ship your own CSS
-- Rich content: plain text, trusted HTML, or a fully custom render function
-- Lifecycle hooks (`start`, `step`, `next`, `prev`, `skip`, `finish`) and per-step conditions
-- Placement control (`auto`/`top`/`bottom`/`left`/`right`), spotlight padding, scroll-into-view
-- Pluggable persistence (cookie / localStorage / memory / custom) to show once per release
-- Ships ESM, CJS, and a browser IIFE global; TypeScript types included
+Zero runtime dependencies. Ships ESM, CJS, and a browser IIFE.
+
+
+![Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGt3MW96djBpdW81N3poMmkxYzZmM3RmODMzY29qbXR1NG1sc2o0dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/y1HOWQji39PW0z0gRz/giphy.gif)
+
 
 ## Install
 
@@ -25,110 +27,75 @@ Or via CDN (browser global `ReleaseHighlighter`):
 <script src="https://unpkg.com/@inandi/release-highlighter"></script>
 ```
 
-## Quick start (JS-first)
+## Quick start
 
-```ts
-import { ReleaseHighlighter } from "@inandi/release-highlighter";
-
-const rh = new ReleaseHighlighter({
-  version: "2.1.0", // shown once per version (persisted)
-  theme: { accent: "#4f80ff", radius: "10px", darkMode: "auto" },
-  labels: { next: "Got it", done: "Finish" },
-  steps: [
-    { target: ".cart-summary", title: "New cart", body: "Totals are clearer.", placement: "bottom" },
-    { target: "#avatar", body: "Upload <b>SVG avatars</b>.", html: true },
-    { target: () => document.querySelector(".sidebar a"), body: "Jump around faster." },
-  ],
-  on: {
-    finish: () => console.log("done"),
-  },
-});
-
-rh.start();
-```
-
-The default styles are injected automatically. If you prefer to manage CSS
-yourself, set `injectStyles: false` and import the stylesheet (or copy it):
-
-```ts
-import "@inandi/release-highlighter/styles.css";
-```
-
-## Load steps from a JSON manifest
-
-Steps can come from a remote JSON manifest instead of inline config.
-
-```ts
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
-rh.start();
-```
-
-Manifest shape (a bare `Step[]` array is also accepted):
+1. Add a JSON manifest:
 
 ```json
 {
   "version": "2.1.0",
   "expires": "2026-12-31T23:59:59Z",
   "steps": [
-    { "target": ".cart-summary", "title": "New cart", "body": "Totals are clearer." },
-    { "target": "#avatar", "body": "Upload SVG avatars." }
+    { "target": ".cart-summary", "title": "New cart", "body": "Totals are clearer.", "placement": "bottom" },
+    { "target": "#avatar", "body": "Upload SVG avatars." },
+    { "target": ".sidebar a", "body": "Jump around faster." }
   ]
 }
 ```
 
-`expires` is optional (UTC / ISO date). On or after that moment the journey is
-never shown. Only a single `version` is supported per manifest.
-
-## Options
-
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `steps` | `Step[]` | `[]` | Steps to run. Optional when loading from a manifest. |
-| `version` / `id` | `string` | – | Identity used for "show once" persistence. |
-| `theme` | `Theme` | – | Colors, radius, font, `darkMode`, `zIndex` (mapped to CSS variables). |
-| `labels` | `Partial<Labels>` | `Next/Back/Skip/Done` | Global control labels. |
-| `storage` | `'cookie' \| 'localStorage' \| 'memory' \| StorageAdapter` | `'cookie'` | Persistence backend. |
-| `storageKey` | `string` | `release_highlighter` | Storage key. |
-| `cookieDays` | `number` | `180` | Cookie lifetime (cookie adapter only). |
-| `force` | `boolean` | `false` | Always show, ignore stored state. |
-| `expiresAt` | `string \| number \| Date` | – | Never show on/after this UTC time (overrides `force`). |
-| `placement` | `Placement` | `'auto'` | Default tooltip placement. |
-| `padding` | `number` | `8` | Spotlight gap (px) around targets. |
-| `scrollIntoView` | `boolean` | `true` | Scroll target into view before showing. |
-| `autoAdvanceOnHidden` | `boolean` | `true` | Advance if the target scrolls out of view. |
-| `closeOnOverlayClick` | `boolean` | `true` | Advance when the dimmed overlay is clicked. |
-| `keyboard` | `boolean` | `true` | Arrow / Enter / Escape controls. |
-| `skipHiddenTargets` | `boolean` | `true` | Skip steps whose target is not visible. |
-| `injectStyles` | `boolean` | `true` | Inject default CSS (set false to use your own). |
-| `on` | `Hooks` | – | Lifecycle callbacks. |
-
-### Step shape
+2. Load it and start:
 
 ```ts
-type Step = {
-  target: string | Element | (() => Element | null);
-  title?: string;
-  body?: string;
-  html?: boolean;                 // treat title/body as trusted HTML
-  placement?: "auto" | "top" | "bottom" | "left" | "right";
-  padding?: number;
-  labels?: Partial<Labels>;
-  scrollIntoView?: boolean;
-  when?: () => boolean;           // skip when false
-  beforeShow?: (step, api) => void;
-  afterShow?: (step, api) => void;
-  render?: (step, api) => string | HTMLElement; // custom tooltip content
-  data?: Record<string, unknown>;
-};
+import { ReleaseHighlighter } from "@inandi/release-highlighter";
+
+const rh = await ReleaseHighlighter.fromJson("/release.json");
+await rh.start();
 ```
 
-The `api` passed to hooks and `render` exposes `next()`, `prev()`, `goTo(i)`,
-`skip()`, `finish()`, and read-only `index` / `total`.
+`version` is used for "show once" persistence. `expires` is optional (UTC / ISO);
+on or after that moment the journey is never shown.
+
+### Force show (dev / demos)
+
+```ts
+const rh = await ReleaseHighlighter.fromJson("/release.json", { force: true });
+await rh.start();
+```
+
+## Manifest step fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `target` | `string` | **Required.** CSS selector of the element to spotlight. |
+| `title` | `string` | Optional heading. |
+| `body` | `string` | Optional body text. |
+| `html` | `boolean` | Treat `title`/`body` as HTML. |
+| `placement` | `"auto" \| "top" \| "bottom" \| "left" \| "right"` | Tooltip side. |
+| `padding` | `number` | Spotlight gap (px). |
+| `labels` | `{ next?, prev?, skip?, done? }` | Per-step button labels. |
+| `scrollIntoView` | `boolean` | Scroll target into view before showing. |
+
+## Options (`fromJson` second argument)
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `force` | `false` | Always show, ignore stored "seen" state. |
+| `theme` | – | Colors, radius, font, `darkMode`, `zIndex`. |
+| `labels` | `Next/Back/Skip/Done` | Global control labels. |
+| `storage` | `'cookie'` | `'cookie' \| 'localStorage' \| 'memory'`. |
+| `storageKey` | `release_highlighter` | Persistence key. |
+| `cookieDays` | `180` | Cookie lifetime. |
+| `placement` | `'auto'` | Default tooltip placement. |
+| `padding` | `8` | Default spotlight gap (px). |
+| `scrollIntoView` | `true` | Scroll targets into view. |
+| `closeOnOverlayClick` | `true` | Advance on overlay click. |
+| `keyboard` | `true` | Arrow / Enter / Escape. |
+| `skipHiddenTargets` | `true` | Skip steps with missing/hidden targets. |
+| `injectStyles` | `true` | Inject default CSS. |
+| `classPrefix` | – | Extra class prefix on UI elements. |
+| `on` | – | Lifecycle hooks (`start`, `step`, `next`, `prev`, `skip`, `finish`). |
 
 ## Theming
-
-All visuals key off CSS variables on the `.rh-root` container, so you can theme
-via the `theme` option or from your own stylesheet:
 
 ```css
 .rh-root {
@@ -139,13 +106,18 @@ via the `theme` option or from your own stylesheet:
 }
 ```
 
-Set `theme.darkMode` to `"auto"` (follows `prefers-color-scheme`), `true`, or
-`false`.
+Or via `theme: { accent: "#4f80ff", radius: "10px", darkMode: "auto" }`.
+
+If you manage CSS yourself, set `injectStyles: false` and import:
+
+```ts
+import "@inandi/release-highlighter/styles.css";
+```
 
 ## Public API
 
 ```ts
-const rh = new ReleaseHighlighter(options);
+const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 rh.next();
 rh.prev();
@@ -164,7 +136,54 @@ npm run dev
 # open http://localhost:5174/demo/
 ```
 
-The dev server serves the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
+```mermaid
+flowchart TD
+    A["new ReleaseHighlighter(options)"]
+        --> B["Resolve config:<br/>labels, storage, placement, padding, flags"]
+        --> C["rh.start()"]
+
+    C --> D{"Inject styles?"}
+    D -- yes --> D1["Inject default CSS once<br/>(#rh-styles)"]
+    D1 --> E{"Is expired?<br/>(now ≥ expiresAt)"}
+    D -- no --> E
+
+    E -- yes --> Z1["Return: never show"]
+    E -- no --> F{"Has seen?<br/>(cookie == version)<br/>and not force"}
+
+    F -- yes --> Z2["Return: already seen"]
+    F -- no --> G["Collect steps"]
+
+    G --> G1["For each step:<br/>run when(),<br/>pickTarget() = first RENDERED match"]
+    G1 --> H{"Any active steps?"}
+
+    H -- no --> I["markSeen() then return"]
+    H -- yes --> J["Mount UI:<br/>overlay + highlight<br/>+ tooltip + arrow (.rh-root)"]
+
+    J --> K["Bind scroll/resize (rAF) + keyboard"]
+    K --> L["on.start(); showStep(0)"]
+
+    L --> M["showStep(i)"]
+    M --> M1["beforeShow → scrollIntoView<br/>→ renderCurrent() → on.step → afterShow"]
+
+    M1 --> N{"User action"}
+    N -- "Next / Enter / overlay click" --> O{"Last step?"}
+    O -- no --> P["showStep(i + 1)"]
+    O -- yes --> Q["finish()"]
+    N -- "Back / ArrowLeft" --> R["showStep(i - 1)"]
+    N -- "Skip / Escape" --> S["skip()"]
+
+    P --> M
+    R --> M
+
+    Q --> T["on.finish → markSeen() → teardown"]
+    S --> U["on.skip → markSeen() → teardown"]
+
+    T --> V["remove UI, unbind listeners"]
+    U --> V
+```
+
+
+The dev server the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
 The demo runs a journey from a JSON manifest. Serve it over HTTP (not `file://`)
 because the manifest is fetched with `fetch()`.
 
