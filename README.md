@@ -39,7 +39,7 @@ Or via CDN (browser global `ReleaseHighlighter`):
 ```ts
 import { ReleaseHighlighter } from "@inandi/release-highlighter";
 
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
+const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 ```
 
@@ -49,7 +49,7 @@ on or after that moment the journey is never shown.
 ### Force show (dev / demos)
 
 ```ts
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json", { force: true });
+const rh = await ReleaseHighlighter.fromJson("/release.json", { force: true });
 await rh.start();
 ```
 
@@ -108,7 +108,7 @@ import "@inandi/release-highlighter/styles.css";
 ## Public API
 
 ```ts
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
+const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 rh.next();
 rh.prev();
