@@ -24,9 +24,13 @@
 export function isElementRendered(element: Element | null): element is HTMLElement {
     if (!(element instanceof HTMLElement)) return false;
     const style = window.getComputedStyle(element);
+
+    // Check if the element is hidden via display/visibility/opacity
     if (style.display === "none" || style.visibility === "hidden" || parseFloat(style.opacity || "1") === 0) {
         return false;
     }
+
+    // Check if the element has no layout box
     if (element.offsetWidth === 0 && element.offsetHeight === 0 && element.getClientRects().length === 0) {
         return false;
     }
