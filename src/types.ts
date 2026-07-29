@@ -36,6 +36,9 @@ export interface JourneyApi {
     readonly total: number;
 }
 
+/**
+ * Labels for the controls.
+ */
 export interface Labels {
     next: string;
     prev: string;
@@ -94,6 +97,9 @@ export interface StorageAdapter {
 
 export type StorageOption = "cookie" | "localStorage" | "memory" | StorageAdapter;
 
+/**
+ * Lifecycle hooks.
+ */
 export interface Hooks {
     start?: (api: JourneyApi) => void;
     step?: (step: Step, api: JourneyApi) => void;
