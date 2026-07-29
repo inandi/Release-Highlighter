@@ -109,24 +109,14 @@ export class Ui {
     }
 
     /**
-     * Populate the tooltip DOM from the `Step` definition or custom renderer.
+     * Populate the tooltip DOM from the `Step` definition.
      *
      * @param ctx Render context providing content and labels
      * @internal
      */
     private renderContent(ctx: RenderContext): void {
-        const { step, api, labels } = ctx;
+        const { step, labels } = ctx;
         this.tooltip.textContent = "";
-
-        if (step.render) {
-            const custom = step.render(step, api);
-            if (typeof custom === "string") {
-                this.tooltip.innerHTML = custom;
-            } else {
-                this.tooltip.appendChild(custom);
-            }
-            return;
-        }
 
         if (step.title) {
             const header = el("div", classes("rh-header", pref(this.classPrefix, "header")));

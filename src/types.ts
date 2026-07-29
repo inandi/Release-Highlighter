@@ -4,7 +4,7 @@
  * @file Public types and options.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
@@ -19,15 +19,12 @@
 export type Placement = "auto" | "top" | "bottom" | "left" | "right";
 
 /**
- * A target can be a CSS selector, a live element, or a resolver function.
- * Functions are evaluated at the moment the step is shown, which is useful for
- * elements that are rendered lazily.
+ * CSS selector used to find the element to spotlight.
  */
-export type StepTarget = string | Element | (() => Element | null | undefined);
+export type StepTarget = string;
 
 /**
- * Public methods exposed to hooks and custom renderers so integrators can drive
- * the journey from their own UI.
+ * Public methods exposed to hooks so integrators can drive the journey.
  */
 export interface JourneyApi {
     next(): void;
@@ -46,8 +43,12 @@ export interface Labels {
     done: string;
 }
 
+/**
+ * A single tour step as defined in the JSON manifest.
+ * All fields are JSON-serializable.
+ */
 export interface Step {
-    /** Element(s) to spotlight. */
+    /** CSS selector of the element to spotlight. */
     target: StepTarget;
     /** Optional bold heading shown above the body. */
     title?: string;
@@ -63,24 +64,10 @@ export interface Step {
     labels?: Partial<Labels>;
     /** Scroll the target into view before showing. Defaults to the global option. */
     scrollIntoView?: boolean;
-    /** Skip this step when it returns false. */
-    when?: () => boolean;
-    /** Called right before the step is rendered. */
-    beforeShow?: (step: Step, api: JourneyApi) => void;
-    /** Called right after the step is rendered. */
-    afterShow?: (step: Step, api: JourneyApi) => void;
-    /**
-     * Fully custom tooltip content. Return a string (HTML) or a DOM node; it
-     * replaces the default title/body/controls markup.
-     */
-    render?: (step: Step, api: JourneyApi) => string | HTMLElement;
-    /** Arbitrary user data carried along with the step. */
-    data?: Record<string, unknown>;
 }
 
 /**
- * Theme values are written to CSS custom properties on the injected root, so any
- * of them can also be overridden from the host stylesheet.
+ * Theme values are written to CSS custom properties on the injected root.
  */
 export interface Theme {
     accent?: string;
@@ -98,8 +85,7 @@ export interface Theme {
 }
 
 /**
- * Pluggable persistence. Return the stored value for `get`; persist for `set`.
- * Built-in adapters: 'cookie' | 'localStorage' | 'memory'.
+ * Pluggable persistence. Built-in: 'cookie' | 'localStorage' | 'memory'.
  */
 export interface StorageAdapter {
     get(key: string): string | null;
@@ -117,17 +103,11 @@ export interface Hooks {
     finish?: (api: JourneyApi) => void;
 }
 
+/**
+ * Runtime options passed to `ReleaseHighlighter.fromJson`.
+ * Steps, version, and expiry come from the JSON manifest.
+ */
 export interface ReleaseHighlighterOptions {
-    /** Steps to run. Optional when loading from a remote source. */
-    steps?: Step[];
-    /**
-     * Journey identity used for "show once" persistence. Falls back to `id`.
-     * When loading from a JSON manifest this is populated from the manifest version.
-     */
-    version?: string;
-    /** Alternative persistence key when there is no version. */
-    id?: string;
-
     /** Global labels for controls. */
     labels?: Partial<Labels>;
     /** Theme overrides mapped to CSS variables. */
@@ -149,11 +129,6 @@ export interface ReleaseHighlighterOptions {
      * @default false
      */
     force?: boolean;
-    /**
-     * Do not show on or after this moment. Accepts a UTC/ISO date string
-     * (e.g. "2026-12-31T23:59:59Z"), an epoch-millis number, or a Date.
-     */
-    expiresAt?: string | number | Date;
 
     /** Default placement when a step does not specify one.
      * @default 'auto'
@@ -191,12 +166,20 @@ export interface ReleaseHighlighterOptions {
 
     /**
      * Optional additional CSS class prefix applied to all injected UI elements
-     * in addition to the built-in `rh-*` classes. For example, when set to
-     * "release-highlighter--", the tooltip will also carry the class
-     * "release-highlighter--tooltip". Defaults to none.
+     * in addition to the built-in `rh-*` classes.
      */
     classPrefix?: string;
 
     /** Lifecycle hooks. */
     on?: Hooks;
+}
+
+/**
+ * Internal options used after a JSON manifest has been loaded.
+ * @internal
+ */
+export interface InternalOptions extends ReleaseHighlighterOptions {
+    steps: Step[];
+    version?: string;
+    expiresAt?: string | number | Date;
 }

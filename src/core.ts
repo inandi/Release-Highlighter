@@ -19,6 +19,7 @@ import type {
     Step,
     StorageAdapter,
     ReleaseHighlighterOptions,
+    InternalOptions,
 } from "./types";
 import { resolveStorage } from "./storage";
 import { injectStyles } from "./styles";
@@ -50,18 +51,18 @@ interface ActiveStep {
 }
 
 /**
- * Orchestrates the release journey: filters steps, manages state, wires UI,
- * handles input, and persists completion.
+ * Orchestrates the release journey from a JSON manifest: filters steps, manages
+ * state, wires UI, handles input, and persists completion.
  *
  * @public
- * @remarks See {@link ReleaseHighlighterOptions} for configuration.
+ * @remarks Create instances only via {@link ReleaseHighlighter.fromJson}.
  * @example
- * import { ReleaseHighlighter } from "release-highlighter";
- * const rh = new ReleaseHighlighter({ steps: [{ target: ".cart", body: "..." }] });
+ * import { ReleaseHighlighter } from "@inandi/release-highlighter";
+ * const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
  * await rh.start();
  */
 export class ReleaseHighlighter {
-    private readonly options: ReleaseHighlighterOptions;
+    private readonly options: InternalOptions;
     private readonly config: ResolvedConfig;
     private steps: Step[];
     private active: ActiveStep[] = [];
@@ -73,19 +74,17 @@ export class ReleaseHighlighter {
     private repositionFrame = 0;
 
     /**
-     * Create a new ReleaseHighlighter instance.
-     *
-     * @param options See `ReleaseHighlighterOptions` for configuration details
+     * @internal Prefer {@link ReleaseHighlighter.fromJson}.
      */
-    constructor(options: ReleaseHighlighterOptions) {
+    private constructor(options: InternalOptions) {
         this.options = options;
-        this.steps = options.steps ? [...options.steps] : [];
+        this.steps = [...options.steps];
         const cookieDays = options.cookieDays ?? 180;
         this.config = {
             labels: { ...DEFAULT_LABELS, ...options.labels },
             storage: resolveStorage(options.storage, cookieDays),
             storageKey: options.storageKey ?? "release_highlighter",
-            seenValue: options.version ?? options.id ?? null,
+            seenValue: options.version ?? null,
             force: options.force ?? false,
             placement: options.placement ?? "auto",
             padding: options.padding ?? 8,
@@ -98,22 +97,23 @@ export class ReleaseHighlighter {
         };
     }
 
-    /** Load steps from a remote JSON manifest, then construct an instance.
+    /**
+     * Load a JSON manifest and create an instance.
      *
-     * @param url URL to a JSON manifest or a `Step[]`
-     * @param options Additional options excluding `steps`
+     * @param url URL to a JSON manifest (`{ version, steps, expires? }`)
+     * @param options Optional runtime overrides (theme, force, storage, …)
      * @returns A configured ReleaseHighlighter instance
      * @public
      */
     static async fromJson(
         url: string,
-        options: Omit<ReleaseHighlighterOptions, "steps"> = {},
+        options: ReleaseHighlighterOptions = {},
     ): Promise<ReleaseHighlighter> {
         const { version, steps, expires } = await loadJson(url);
         return new ReleaseHighlighter({
             ...options,
-            version: options.version ?? version,
-            expiresAt: options.expiresAt ?? expires,
+            version,
+            expiresAt: expires,
             steps,
         });
     }
@@ -220,7 +220,6 @@ export class ReleaseHighlighter {
     private collectSteps(): void {
         const active: ActiveStep[] = [];
         for (const step of this.steps) {
-            if (step.when && !step.when()) continue;
             // Presence-based (not viewport-based) so the step count is stable
             // regardless of where the user has scrolled. Only the first matching
             // element per target is used.
@@ -232,8 +231,7 @@ export class ReleaseHighlighter {
     }
 
     /**
-     * Render the step at `index`, scrolling target into view when enabled and
-     * firing before/after hooks.
+     * Render the step at `index`, scrolling the target into view when enabled.
      *
      * @param index Zero-based index within the active step list
      * @internal
@@ -244,15 +242,12 @@ export class ReleaseHighlighter {
         const { step, element } = this.active[this.currentIndex];
         const api = this.buildApi();
 
-        step.beforeShow?.(step, api);
         if ((step.scrollIntoView ?? this.config.scrollIntoView) && typeof element.scrollIntoView === "function") {
             element.scrollIntoView({ block: "center", inline: "nearest" });
         }
 
         this.renderCurrent();
-
         this.options.on?.step?.(step, api);
-        step.afterShow?.(step, api);
     }
 
     /** Re-render/position the current step without scrolling or firing hooks.
