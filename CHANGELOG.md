@@ -1,3 +1,10 @@
+# Release v1.1.4 - 2026-07-29
+
+## Improvements
+- Update release/publish process
+
+---
+
 # Release v1.1.3 - 2026-07-29
 
 ## New Features
