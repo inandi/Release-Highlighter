@@ -33,7 +33,8 @@ function getCookie(name: string): string | null {
 }
 
 /**
- * Set a cookie with SameSite=Lax and a given lifetime (days).
+ * Set a SameSite=Lax cookie with a specified name, value, and expiration (in days).
+ * @link https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie
  *
  * @param name Cookie name
  * @param value Raw value to store (will be encoded)
