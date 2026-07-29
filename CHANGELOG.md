@@ -1,3 +1,10 @@
+# Release v1.1.5 - 2026-07-29
+
+## Improvements
+- Update documents
+
+---
+
 # Release v1.1.4 - 2026-07-29
 
 ## Improvements
