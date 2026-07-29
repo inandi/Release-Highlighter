@@ -1,6 +1,6 @@
 {
     "name": "@inandi/release-highlighter",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "Simple release-journey / product-tour plugin for the web. Define steps in a JSON manifest, theme, and hooks included.",
     "type": "module",
     "main": "dist/index.cjs",
@@ -14,7 +14,7 @@
             "import": "./dist/index.mjs",
             "require": "./dist/index.cjs"
         },
-        "./styles.css": "./dist/release-highlighter.css",
+        "./style.css": "./dist/style.css",
         "./package.json": "./package.json"
     },
     "sideEffects": [
@@ -28,7 +28,7 @@
         "build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.mjs --target=es2018 --loader:.css=text",
         "build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.cjs --target=es2018 --loader:.css=text",
         "build:iife": "esbuild src/index.ts --bundle --format=iife --global-name=ReleaseHighlighter --outfile=dist/release-highlighter.iife.js --target=es2018 --minify --loader:.css=text --footer:js=window.ReleaseHighlighter=window.ReleaseHighlighter.default;",
-        "build:css": "cp src/styles.css dist/release-highlighter.css",
+        "build:css": "cp src/style.css dist/style.css",
         "build:types": "tsc --emitDeclarationOnly --declaration --declarationMap false --outDir dist/types",
         "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:iife && npm run build:css && npm run build:types",
         "dev": "npx --yes http-server . -p 5174 -c-1",

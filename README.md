@@ -127,7 +127,56 @@ npm run dev
 # open http://localhost:5174/demo/
 ```
 
-Serve over HTTP (not `file://`) because the manifest is fetched with `fetch()`.
+```mermaid
+flowchart TD
+    A["new ReleaseHighlighter(options)"]
+        --> B["Resolve config:<br/>labels, storage, placement, padding, flags"]
+        --> C["rh.start()"]
+
+    C --> D{"Inject styles?"}
+    D -- yes --> D1["Inject default CSS once<br/>(#rh-styles)"]
+    D1 --> E{"Is expired?<br/>(now ≥ expiresAt)"}
+    D -- no --> E
+
+    E -- yes --> Z1["Return: never show"]
+    E -- no --> F{"Has seen?<br/>(cookie == version)<br/>and not force"}
+
+    F -- yes --> Z2["Return: already seen"]
+    F -- no --> G["Collect steps"]
+
+    G --> G1["For each step:<br/>run when(),<br/>pickTarget() = first RENDERED match"]
+    G1 --> H{"Any active steps?"}
+
+    H -- no --> I["markSeen() then return"]
+    H -- yes --> J["Mount UI:<br/>overlay + highlight<br/>+ tooltip + arrow (.rh-root)"]
+
+    J --> K["Bind scroll/resize (rAF) + keyboard"]
+    K --> L["on.start(); showStep(0)"]
+
+    L --> M["showStep(i)"]
+    M --> M1["beforeShow → scrollIntoView<br/>→ renderCurrent() → on.step → afterShow"]
+
+    M1 --> N{"User action"}
+    N -- "Next / Enter / overlay click" --> O{"Last step?"}
+    O -- no --> P["showStep(i + 1)"]
+    O -- yes --> Q["finish()"]
+    N -- "Back / ArrowLeft" --> R["showStep(i - 1)"]
+    N -- "Skip / Escape" --> S["skip()"]
+
+    P --> M
+    R --> M
+
+    Q --> T["on.finish → markSeen() → teardown"]
+    S --> U["on.skip → markSeen() → teardown"]
+
+    T --> V["remove UI, unbind listeners"]
+    U --> V
+```
+
+
+The dev server serves the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
+The demo runs a journey from a JSON manifest. Serve it over HTTP (not `file://`)
+because the manifest is fetched with `fetch()`.
 
 ## License
 

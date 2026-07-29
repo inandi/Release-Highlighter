@@ -12,7 +12,7 @@
  * @copyright (c) 2026 Gobinda Nandi
  */
 
-import css from "./styles.css";
+import css from "./style.css";
 import type { Theme } from "./types";
 
 const STYLE_ID = "rh-styles";
