@@ -36,6 +36,8 @@ export interface RenderContext {
 }
 
 const SAFE_MARGIN = 20;
+/** Gap (px) between the spotlighted target and the tooltip. */
+const TOOLTIP_GAP = 22;
 
 /**
  * UI layer responsible for rendering and positioning the overlay, highlight,
@@ -179,10 +181,10 @@ export class Ui {
         let top: number;
         let left: number;
         if (side === "top" || side === "bottom") {
-            top = side === "bottom" ? rect.bottom + 12 : rect.top - tooltipHeight - 12;
+            top = side === "bottom" ? rect.bottom + TOOLTIP_GAP : rect.top - tooltipHeight - TOOLTIP_GAP;
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
         } else {
-            left = side === "right" ? rect.right + 12 : rect.left - tooltipWidth - 12;
+            left = side === "right" ? rect.right + TOOLTIP_GAP : rect.left - tooltipWidth - TOOLTIP_GAP;
             top = rect.top + rect.height / 2 - tooltipHeight / 2;
         }
         top = clamp(top, SAFE_MARGIN, vh - tooltipHeight - SAFE_MARGIN);
