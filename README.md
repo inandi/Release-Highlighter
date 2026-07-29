@@ -1,10 +1,19 @@
 # release-highlighter
+<p>
+  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.2-green" />
+  <img alt="Updated On" src="https://img.shields.io/badge/Updated%20On-July%202026-blue" />
+  <img alt="Released On" src="https://img.shields.io/badge/Released%20On-July%202026-orange" />
+</p>
 
 Simple **release-journey / product-tour** plugin for the web.
 Define steps in a JSON file, point them at CSS selectors, and it walks users
 through what's new with an overlay, spotlight, and tooltip.
 
 Zero runtime dependencies. Ships ESM, CJS, and a browser IIFE.
+
+
+![Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGt3MW96djBpdW81N3poMmkxYzZmM3RmODMzY29qbXR1NG1sc2o0dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/y1HOWQji39PW0z0gRz/giphy.gif)
+
 
 ## Install
 
