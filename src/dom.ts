@@ -4,11 +4,11 @@
  * @file DOM helpers for visibility checks, target resolution, and viewport size.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -17,13 +17,20 @@
  * not hidden via display/visibility/opacity and it has a layout box. This does
  * NOT consider the viewport, so an element scrolled out of view still counts as
  * present (the tour scrolls each step into view before showing it).
+ *
+ * @param element Candidate element (or null)
+ * @returns True when `element` is a rendered HTMLElement
  */
 export function isElementRendered(element: Element | null): element is HTMLElement {
     if (!(element instanceof HTMLElement)) return false;
     const style = window.getComputedStyle(element);
+
+    // Check if the element is hidden via display/visibility/opacity
     if (style.display === "none" || style.visibility === "hidden" || parseFloat(style.opacity || "1") === 0) {
         return false;
     }
+
+    // Check if the element has no layout box
     if (element.offsetWidth === 0 && element.offsetHeight === 0 && element.getClientRects().length === 0) {
         return false;
     }

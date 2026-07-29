@@ -8,7 +8,7 @@
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -36,6 +36,9 @@ export interface JourneyApi {
     readonly total: number;
 }
 
+/**
+ * Labels for the controls.
+ */
 export interface Labels {
     next: string;
     prev: string;
@@ -94,6 +97,9 @@ export interface StorageAdapter {
 
 export type StorageOption = "cookie" | "localStorage" | "memory" | StorageAdapter;
 
+/**
+ * Lifecycle hooks.
+ */
 export interface Hooks {
     start?: (api: JourneyApi) => void;
     step?: (step: Step, api: JourneyApi) => void;
@@ -176,10 +182,15 @@ export interface ReleaseHighlighterOptions {
 
 /**
  * Internal options used after a JSON manifest has been loaded.
+ * Carries `steps` plus optional persistence `version` and `expiresAt` from the manifest.
+ *
  * @internal
  */
 export interface InternalOptions extends ReleaseHighlighterOptions {
+    /** Steps loaded from the JSON manifest. */
     steps: Step[];
+    /** Journey identity from the manifest `version` field. */
     version?: string;
+    /** Optional expiry from the manifest `expires` field. */
     expiresAt?: string | number | Date;
 }

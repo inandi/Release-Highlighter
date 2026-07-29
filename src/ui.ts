@@ -4,11 +4,11 @@
  * @file Rendering and positioning for overlay, highlight, tooltip, and arrow.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -36,6 +36,8 @@ export interface RenderContext {
 }
 
 const SAFE_MARGIN = 20;
+/** Gap (px) between the spotlighted target and the tooltip. */
+const TOOLTIP_GAP = 22;
 
 /**
  * UI layer responsible for rendering and positioning the overlay, highlight,
@@ -109,7 +111,7 @@ export class Ui {
     }
 
     /**
-     * Populate the tooltip DOM from the `Step` definition.
+     * Populate the tooltip DOM from the JSON `Step` definition (title, body, controls).
      *
      * @param ctx Render context providing content and labels
      * @internal
@@ -179,10 +181,10 @@ export class Ui {
         let top: number;
         let left: number;
         if (side === "top" || side === "bottom") {
-            top = side === "bottom" ? rect.bottom + 12 : rect.top - tooltipHeight - 12;
+            top = side === "bottom" ? rect.bottom + TOOLTIP_GAP : rect.top - tooltipHeight - TOOLTIP_GAP;
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
         } else {
-            left = side === "right" ? rect.right + 12 : rect.left - tooltipWidth - 12;
+            left = side === "right" ? rect.right + TOOLTIP_GAP : rect.left - tooltipWidth - TOOLTIP_GAP;
             top = rect.top + rect.height / 2 - tooltipHeight / 2;
         }
         top = clamp(top, SAFE_MARGIN, vh - tooltipHeight - SAFE_MARGIN);

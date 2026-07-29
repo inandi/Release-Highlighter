@@ -1,10 +1,19 @@
 # release-highlighter
+<p>
+  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.2-green" />
+  <img alt="Updated On" src="https://img.shields.io/badge/Updated%20On-July%202026-blue" />
+  <img alt="Released On" src="https://img.shields.io/badge/Released%20On-July%202026-orange" />
+</p>
 
 Simple **release-journey / product-tour** plugin for the web.
 Define steps in a JSON file, point them at CSS selectors, and it walks users
 through what's new with an overlay, spotlight, and tooltip.
 
 Zero runtime dependencies. Ships ESM, CJS, and a browser IIFE.
+
+
+![Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGt3MW96djBpdW81N3poMmkxYzZmM3RmODMzY29qbXR1NG1sc2o0dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/y1HOWQji39PW0z0gRz/giphy.gif)
+
 
 ## Install
 
@@ -39,7 +48,7 @@ Or via CDN (browser global `ReleaseHighlighter`):
 ```ts
 import { ReleaseHighlighter } from "@inandi/release-highlighter";
 
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
+const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 ```
 
@@ -49,7 +58,7 @@ on or after that moment the journey is never shown.
 ### Force show (dev / demos)
 
 ```ts
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json", { force: true });
+const rh = await ReleaseHighlighter.fromJson("/release.json", { force: true });
 await rh.start();
 ```
 
@@ -108,7 +117,7 @@ import "@inandi/release-highlighter/styles.css";
 ## Public API
 
 ```ts
-const rh = await ReleaseHighlighter.fromJson("/releases/2.1.0.json");
+const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 rh.next();
 rh.prev();
@@ -174,7 +183,7 @@ flowchart TD
 ```
 
 
-The dev server serves the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
+The dev server the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
 The demo runs a journey from a JSON manifest. Serve it over HTTP (not `file://`)
 because the manifest is fetched with `fetch()`.
 
