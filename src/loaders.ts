@@ -4,7 +4,7 @@
  * @file Utilities to fetch and validate JSON manifests for journeys.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
@@ -28,25 +28,29 @@ async function fetchText(url: string): Promise<string> {
 }
 
 /**
- * JSON manifest shape:
- * { "version": "2.1.0", "steps": [ { "target": ".x", "body": "..." } ] }
- * A bare array of steps is also accepted.
- */
-/**
- * Load a JSON manifest or a bare array of steps from `url`.
+ * Load a JSON manifest from `url`.
  *
- * Validates 'version' (must be a single string) and optional 'expires' (UTC/ISO).
+ * Expected shape:
+ * `{ "version": "2.1.0", "expires?": "…", "steps": [ { "target": ".x", "body": "…" } ] }`
  *
  * @param url Resource URL
- * @returns Object containing optional version, steps array, and optional expires
- * @throws When validation fails
+ * @returns Object containing version, steps, and optional expires
+ * @throws When the response fails or the manifest is invalid
  */
 export async function loadJson(
     url: string,
 ): Promise<{ version?: string; steps: Step[]; expires?: string }> {
     const text = await fetchText(url);
     const data = JSON.parse(text);
-    if (Array.isArray(data)) return { steps: data as Step[] };
+
+    if (Array.isArray(data) || typeof data !== "object" || data == null) {
+        throw new Error(
+            "release manifest must be an object with a 'steps' array (bare step arrays are not supported)",
+        );
+    }
+    if (!Array.isArray(data.steps)) {
+        throw new Error("release manifest 'steps' must be an array");
+    }
     if (data.version != null && typeof data.version !== "string") {
         throw new Error(
             "release manifest 'version' must be a single string; multiple versions are not supported",
@@ -57,5 +61,14 @@ export async function loadJson(
             throw new Error("release manifest 'expires' must be a UTC/ISO date string");
         }
     }
-    return { version: data.version, steps: (data.steps || []) as Step[], expires: data.expires };
+
+    const steps: Step[] = [];
+    for (const raw of data.steps) {
+        if (!raw || typeof raw !== "object" || typeof raw.target !== "string" || !raw.target.trim()) {
+            throw new Error("each step must have a non-empty string 'target' (CSS selector)");
+        }
+        steps.push(raw as Step);
+    }
+
+    return { version: data.version, steps, expires: data.expires };
 }
