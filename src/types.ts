@@ -8,7 +8,7 @@
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -176,10 +176,15 @@ export interface ReleaseHighlighterOptions {
 
 /**
  * Internal options used after a JSON manifest has been loaded.
+ * Carries `steps` plus optional persistence `version` and `expiresAt` from the manifest.
+ *
  * @internal
  */
 export interface InternalOptions extends ReleaseHighlighterOptions {
+    /** Steps loaded from the JSON manifest. */
     steps: Step[];
+    /** Journey identity from the manifest `version` field. */
     version?: string;
+    /** Optional expiry from the manifest `expires` field. */
     expiresAt?: string | number | Date;
 }

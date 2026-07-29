@@ -4,11 +4,11 @@
  * @file Rendering and positioning for overlay, highlight, tooltip, and arrow.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -109,7 +109,7 @@ export class Ui {
     }
 
     /**
-     * Populate the tooltip DOM from the `Step` definition.
+     * Populate the tooltip DOM from the JSON `Step` definition (title, body, controls).
      *
      * @param ctx Render context providing content and labels
      * @internal

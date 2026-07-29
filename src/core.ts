@@ -4,11 +4,11 @@
  * @file Orchestrates journeys: filters steps, manages state, wires UI, input, and persistence.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.2
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -74,6 +74,9 @@ export class ReleaseHighlighter {
     private repositionFrame = 0;
 
     /**
+     * Create an instance from already-loaded manifest data.
+     *
+     * @param options Internal options including `steps`, optional `version`, and optional `expiresAt`
      * @internal Prefer {@link ReleaseHighlighter.fromJson}.
      */
     private constructor(options: InternalOptions) {
@@ -119,7 +122,7 @@ export class ReleaseHighlighter {
     }
 
     /**
-     * Build a stable API object exposed to hooks and custom renderers.
+     * Build a stable API object exposed to lifecycle hooks.
      *
      * @returns Read-only API with navigation methods and counters
      * @internal
@@ -213,7 +216,7 @@ export class ReleaseHighlighter {
     }
 
     /**
-     * Evaluate step conditions, resolve targets, and build the active step list.
+     * Resolve each step's CSS selector target and build the active step list.
      * Presence-based selection keeps the step count stable regardless of scroll.
      * @internal
      */
