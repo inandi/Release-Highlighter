@@ -23,30 +23,31 @@ const STYLE_ID = "rh-styles";
  * @internal
  */
 export function injectStyles(): void {
-    if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
+  if (typeof document === "undefined" || document.getElementById(STYLE_ID))
+    return;
 
-    // Create a style element and add it to the head
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = css;
+  // Create a style element and add it to the head
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = css;
 
-    // Append the style element to the head
-    document.head.appendChild(style);
+  // Append the style element to the head
+  document.head.appendChild(style);
 }
 
 // CSS variables for the theme
 const THEME_VARS: Record<keyof Theme, string | null> = {
-    accent: "--rh-accent",  // CSS variable for the accent color
-    accentText: "--rh-accent-text",  // CSS variable for the accent text color
-    background: "--rh-bg",  // CSS variable for the background color
-    text: "--rh-text",  // CSS variable for the text color
-    mutedText: "--rh-muted",  // CSS variable for the muted text color
-    overlay: "--rh-overlay",  // CSS variable for the overlay color
-    radius: "--rh-radius",  // CSS variable for the radius
-    shadow: "--rh-shadow",  // CSS variable for the shadow color
-    fontFamily: "--rh-font",  // CSS variable for the font family
-    zIndex: "--rh-z",  // CSS variable for the z-index
-    darkMode: null,  // CSS variable for the dark mode
+  accent: "--rh-accent", // CSS variable for the accent color
+  accentText: "--rh-accent-text", // CSS variable for the accent text color
+  background: "--rh-bg", // CSS variable for the background color
+  text: "--rh-text", // CSS variable for the text color
+  mutedText: "--rh-muted", // CSS variable for the muted text color
+  overlay: "--rh-overlay", // CSS variable for the overlay color
+  radius: "--rh-radius", // CSS variable for the radius
+  shadow: "--rh-shadow", // CSS variable for the shadow color
+  fontFamily: "--rh-font", // CSS variable for the font family
+  zIndex: "--rh-z", // CSS variable for the z-index
+  darkMode: null, // CSS variable for the dark mode
 };
 
 /**
@@ -55,14 +56,17 @@ const THEME_VARS: Record<keyof Theme, string | null> = {
  * @internal
  */
 export function applyTheme(root: HTMLElement, theme: Theme | undefined): void {
-    const dark = theme?.darkMode;
-    root.setAttribute("data-rh-dark", dark === "auto" ? "auto" : dark === true ? "true" : "false");
-    if (!theme) return;
-    (Object.keys(theme) as (keyof Theme)[]).forEach((key) => {
-        const cssVar = THEME_VARS[key];
-        const value = theme[key];
-        if (cssVar && value != null) {
-            root.style.setProperty(cssVar, String(value));
-        }
-    });
+  const dark = theme?.darkMode;
+  root.setAttribute(
+    "data-rh-dark",
+    dark === "auto" ? "auto" : dark === true ? "true" : "false",
+  );
+  if (!theme) return;
+  (Object.keys(theme) as (keyof Theme)[]).forEach((key) => {
+    const cssVar = THEME_VARS[key];
+    const value = theme[key];
+    if (cssVar && value != null) {
+      root.style.setProperty(cssVar, String(value));
+    }
+  });
 }
