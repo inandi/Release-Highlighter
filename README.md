@@ -52,8 +52,11 @@ const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 ```
 
-`version` is used for "show once" persistence. `expires` is optional (UTC / ISO);
-on or after that moment the journey is never shown.
+`version` scopes persistence: each step is shown once per version (tracked
+individually by `targetClass`), so steps on different pages keep appearing until
+each has been seen. Bumping `version` resets progress and shows everything again.
+`expires` is optional (UTC / ISO); on or after that moment the journey is never
+shown.
 
 ### Force show (dev / demos)
 
@@ -148,22 +151,20 @@ flowchart TD
     D -- no --> E
 
     E -- yes --> Z1["Return: never show"]
-    E -- no --> F{"Has seen?<br/>(cookie == version)<br/>and not force"}
+    E -- no --> G["Collect steps"]
 
-    F -- yes --> Z2["Return: already seen"]
-    F -- no --> G["Collect steps"]
+    G --> G1["Load seen set for version<br/>(reset if version changed)"]
+    G1 --> G2["For each step:<br/>skip if already seen,<br/>pickTarget() = first RENDERED match"]
+    G2 --> H{"Any unseen steps<br/>present on this page?"}
 
-    G --> G1["For each step:<br/>run when(),<br/>pickTarget() = first RENDERED match"]
-    G1 --> H{"Any active steps?"}
-
-    H -- no --> I["markSeen() then return"]
+    H -- no --> I["Return (nothing to show)"]
     H -- yes --> J["Mount UI:<br/>overlay + highlight<br/>+ tooltip + arrow (.rh-root)"]
 
     J --> K["Bind scroll/resize (rAF) + keyboard"]
     K --> L["on.start(); showStep(0)"]
 
     L --> M["showStep(i)"]
-    M --> M1["beforeShow → scrollIntoView<br/>→ renderCurrent() → on.step → afterShow"]
+    M --> M1["scrollIntoView → renderCurrent()<br/>→ markStepSeen(id) → on.step"]
 
     M1 --> N{"User action"}
     N -- "Next / Enter / overlay click" --> O{"Last step?"}
@@ -175,12 +176,18 @@ flowchart TD
     P --> M
     R --> M
 
-    Q --> T["on.finish → markSeen() → teardown"]
-    S --> U["on.skip → markSeen() → teardown"]
+    Q --> T["on.finish → teardown"]
+    S --> U["on.skip → teardown"]
 
     T --> V["remove UI, unbind listeners"]
     U --> V
 ```
+
+Persistence is **per step**: each step is recorded as seen (keyed by its
+`targetClass`, scoped to the manifest `version`) the moment it is displayed. So
+steps that live on other pages keep showing on later visits until they have all
+been seen, the manifest `version` changes (which resets progress), or `expires`
+passes.
 
 
 The dev server the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
