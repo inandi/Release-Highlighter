@@ -1,6 +1,6 @@
 # release-highlighter
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.5-green" />
+  <img alt="Version" src="https://img.shields.io/badge/Version-1.1.6-green" />
   <img alt="Updated On" src="https://img.shields.io/badge/Updated%20On-July%202026-blue" />
   <img alt="Released On" src="https://img.shields.io/badge/Released%20On-July%202026-orange" />
 </p>
@@ -52,11 +52,14 @@ const rh = await ReleaseHighlighter.fromJson("/release.json");
 await rh.start();
 ```
 
-`version` scopes persistence: each step is shown once per version (tracked
-individually by `targetClass`), so steps on different pages keep appearing until
-each has been seen. Bumping `version` resets progress and shows everything again.
-`expires` is optional (UTC / ISO); on or after that moment the journey is never
-shown.
+`version` scopes persistence: each step is shown once per version (tracked by
+its numeric position in the manifest), so steps on different pages keep
+appearing until each has been seen. **Omit `version` and nothing is persisted**
+— the journey can reappear on every visit. Bumping `version` resets progress and
+shows everything again. Keep step order stable within the same version; use a
+new version whenever steps are inserted, removed, or reordered. Duplicate
+`targetClass` values are allowed and tracked as separate steps. `expires` is
+optional (UTC / ISO); on or after that moment the journey is never shown.
 
 ### Force show (dev / demos)
 
@@ -85,9 +88,9 @@ await rh.start();
 | `force` | `false` | Always show, ignore stored "seen" state. |
 | `theme` | – | Colors, radius, font, `darkMode`, `zIndex`. |
 | `labels` | `Next/Back/Skip/Done` | Global control labels. |
-| `storage` | `'cookie'` | `'cookie' \| 'localStorage' \| 'memory'`. |
-| `storageKey` | `release_highlighter` | Persistence key. |
-| `cookieDays` | `180` | Cookie lifetime. |
+| `storage` | `'cookie'` | `'cookie' \| 'localStorage' \| 'memory'`, or a custom adapter. The localStorage mirror applies only to the built-in `'cookie'` option. `'memory'` does not span page loads. |
+| `storageKey` | `release_highlighter` | Base key. Internal keys are `${storageKey}.seen.meta` and `${storageKey}.seen.N`. |
+| `cookieDays` | `180` | Cookie and localStorage-mirror lifetime. `0` means session cookies (no localStorage mirror). |
 | `placement` | `'auto'` | Default tooltip placement. |
 | `padding` | `8` | Default spotlight gap (px). |
 | `scrollIntoView` | `true` | Scroll targets into view. |
@@ -114,7 +117,7 @@ Or via `theme: { accent: "#4f80ff", radius: "10px", darkMode: "auto" }`.
 If you manage CSS yourself, set `injectStyles: false` and import:
 
 ```ts
-import "@inandi/release-highlighter/styles.css";
+import "@inandi/release-highlighter/style.css";
 ```
 
 ## Public API
@@ -125,9 +128,9 @@ await rh.start();
 rh.next();
 rh.prev();
 rh.goTo(0);
-rh.skip();     // marks as seen
-rh.finish();   // marks as seen
-rh.destroy();  // tear down without marking as seen
+rh.skip();     // end this run; unseen remaining steps stay eligible
+rh.finish();   // finish after displayed steps were recorded
+rh.destroy();  // tear down; unseen remaining steps stay eligible
 ```
 
 ## Demo (run locally)
@@ -141,7 +144,8 @@ npm run dev
 
 ```mermaid
 flowchart TD
-    A["new ReleaseHighlighter(options)"]
+    A["ReleaseHighlighter.fromJson(url, options)"]
+        --> A1["Fetch + validate manifest"]
         --> B["Resolve config:<br/>labels, storage, placement, padding, flags"]
         --> C["rh.start()"]
 
@@ -153,7 +157,7 @@ flowchart TD
     E -- yes --> Z1["Return: never show"]
     E -- no --> G["Collect steps"]
 
-    G --> G1["Load seen set for version<br/>(reset if version changed)"]
+    G --> G1["Load numeric seen indexes<br/>from 250-index shards<br/>(reset if version changed)"]
     G1 --> G2["For each step:<br/>skip if already seen,<br/>pickTarget() = first RENDERED match"]
     G2 --> H{"Any unseen steps<br/>present on this page?"}
 
@@ -164,7 +168,7 @@ flowchart TD
     K --> L["on.start(); showStep(0)"]
 
     L --> M["showStep(i)"]
-    M --> M1["scrollIntoView → renderCurrent()<br/>→ markStepSeen(id) → on.step"]
+    M --> M1["scrollIntoView → renderCurrent()<br/>→ markStepSeen(manifest index) → on.step"]
 
     M1 --> N{"User action"}
     N -- "Next / Enter / overlay click" --> O{"Last step?"}
@@ -183,11 +187,19 @@ flowchart TD
     U --> V
 ```
 
-Persistence is **per step**: each step is recorded as seen (keyed by its
-`targetClass`, scoped to the manifest `version`) the moment it is displayed. So
-steps that live on other pages keep showing on later visits until they have all
-been seen, the manifest `version` changes (which resets progress), or `expires`
-passes.
+Persistence is **per step**: each step is recorded by its numeric manifest index
+the moment it is displayed. Seen indexes are split automatically into shards of
+250, so Release Highlighter does not impose a fixed manifest step limit. With
+the default cookie adapter, each shard uses a separate cookie and is mirrored to
+localStorage (**built-in `'cookie'` only**; custom adapters are used as-is). The
+mirror preserves progress if a browser rejects or evicts a cookie. A shared
+metadata cookie stores one journey-level expiry for all shards. Browser storage
+quotas still apply, so exceptionally large journeys can provide a custom
+`StorageAdapter`.
+
+Shard keys are reused across versions and each stored value includes the
+manifest `version`. This prevents old releases from continuously adding cookie
+keys. A version change invalidates prior indexes automatically.
 
 
 The dev server serves the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.

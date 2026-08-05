@@ -105,11 +105,14 @@ export interface Theme {
 }
 
 /**
- * Pluggable persistence. Built-in: 'cookie' | 'localStorage' | 'memory'.
+ * Pluggable key/value persistence. Release Highlighter writes numeric seen-step
+ * indexes in independent 250-index shards. `remove` is optional but recommended
+ * so expired/migrated keys can be cleaned up.
  */
 export interface StorageAdapter {
   get(key: string): string | null;
   set(key: string, value: string): void;
+  remove?(key: string): void;
 }
 
 export type StorageOption =
@@ -140,15 +143,19 @@ export interface ReleaseHighlighterOptions {
   /** Theme overrides mapped to CSS variables. */
   theme?: Theme;
 
-  /** Persistence backend.
+  /** Persistence backend. When set to the built-in `'cookie'` option (the
+   * default), shards are mirrored to localStorage so progress survives
+   * rejected or evicted cookies. Custom adapters are not mirrored.
    * @default 'cookie'
    */
   storage?: StorageOption;
-  /** Storage key.
+  /** Base storage key. Internal keys `${storageKey}.seen.meta` and
+   * `${storageKey}.seen.N` are appended automatically.
    * @default 'release_highlighter'
    */
   storageKey?: string;
-  /** How long the cookie lives (only used by the cookie adapter).
+  /** How long built-in cookie shards and their localStorage mirrors live.
+   * `0` creates session cookies and disables the mirror.
    * @default 180
    */
   cookieDays?: number;

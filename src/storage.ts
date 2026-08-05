@@ -4,11 +4,11 @@
  * @file Cookie, localStorage, and memory storage adapters.
  * @license MIT
  *
- * Simple, highly customizable release-journey / product-tour plugin for the web.
+ * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.1
+ * @version 1.1.6
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -22,40 +22,67 @@ import type { StorageAdapter, StorageOption } from "./types";
  */
 function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
-  const nameEq = name + "=";
-  const parts = document.cookie.split("; ");
-  for (const part of parts) {
-    if (part.startsWith(nameEq)) {
-      return decodeURIComponent(part.substring(nameEq.length));
+  try {
+    const nameEq = encodeURIComponent(name) + "=";
+    const parts = document.cookie.split("; ");
+    for (const part of parts) {
+      if (part.startsWith(nameEq)) {
+        return decodeURIComponent(part.substring(nameEq.length));
+      }
     }
+  } catch {
+    return null;
   }
   return null;
 }
 
 /**
- * Set a SameSite=Lax cookie with a specified name, value, and expiration (in days).
+ * Set a SameSite=Lax cookie with a specified name, value, and lifetime.
+ * `days <= 0` creates a session cookie (no Expires attribute).
  * @link https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie
  *
  * @param name Cookie name
  * @param value Raw value to store (will be encoded)
- * @param days Lifetime in days
+ * @param days Lifetime in days; <= 0 means session
  */
 function setCookie(name: string, value: string, days: number): void {
   if (typeof document === "undefined") return;
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Expires=${expires}; Path=/; SameSite=Lax`;
+  try {
+    const lifetime =
+      days > 0
+        ? `; Expires=${new Date(Date.now() + days * 864e5).toUTCString()}`
+        : "";
+    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}${lifetime}; Path=/; SameSite=Lax`;
+  } catch {
+    /* blocked cookie access is handled by write verification in the core */
+  }
+}
+
+/**
+ * Delete a cookie by writing an expired value.
+ *
+ * @param name Cookie name
+ */
+function removeCookie(name: string): void {
+  if (typeof document === "undefined") return;
+  try {
+    document.cookie = `${encodeURIComponent(name)}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; SameSite=Lax`;
+  } catch {
+    /* ignore blocked cookie access */
+  }
 }
 
 /**
  * Cookie-backed storage adapter.
  *
- * @param days Lifetime for the cookie value in days
+ * @param days Lifetime for the cookie value in days; <= 0 means session cookies
  * @returns StorageAdapter using document.cookie
  */
 export function cookieStorage(days: number): StorageAdapter {
   return {
     get: (key) => getCookie(key),
     set: (key, value) => setCookie(key, value, days),
+    remove: (key) => removeCookie(key),
   };
 }
 
@@ -80,6 +107,13 @@ export function localStorageAdapter(): StorageAdapter {
         /* ignore quota / privacy-mode errors */
       }
     },
+    remove: (key) => {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        /* ignore quota / privacy-mode errors */
+      }
+    },
   };
 }
 
@@ -94,6 +128,9 @@ export function memoryStorage(): StorageAdapter {
     get: (key) => (map.has(key) ? (map.get(key) as string) : null),
     set: (key, value) => {
       map.set(key, value);
+    },
+    remove: (key) => {
+      map.delete(key);
     },
   };
 }

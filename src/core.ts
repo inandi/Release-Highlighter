@@ -21,7 +21,7 @@ import type {
   ReleaseHighlighterOptions,
   InternalOptions,
 } from "./types";
-import { resolveStorage } from "./storage";
+import { localStorageAdapter, resolveStorage } from "./storage";
 import { injectStyles } from "./styles";
 import { isElementRendered, pickTarget } from "./dom";
 import { Ui } from "./ui";
@@ -34,9 +34,14 @@ const DEFAULT_LABELS: Labels = {
   done: "Done",
 };
 
+/** Maximum number of numeric step indexes stored in one persistence shard. */
+const SEEN_SHARD_SIZE = 250;
+
 interface ResolvedConfig {
   labels: Labels;
   storage: StorageAdapter;
+  fallbackStorage: StorageAdapter | null;
+  fallbackDays: number | null;
   storageKey: string;
   seenValue: string | null;
   force: boolean;
@@ -53,14 +58,23 @@ interface ResolvedConfig {
 interface ActiveStep {
   step: Step;
   element: HTMLElement;
-  /** Stable identifier used for per-step "seen" persistence. */
-  id: string;
+  /** Stable position in the manifest, used for per-step persistence. */
+  stepIndex: number;
 }
 
-/** Persisted shape: which step ids have been seen, scoped to a version. */
+/** Persisted shape for one shard of numeric step indexes. */
 interface SeenState {
   v: string;
-  seen: string[];
+  seen: number[];
+}
+
+/** Journey-level metadata shared by all shards for a version. */
+interface SeenMeta {
+  v: string;
+  /** Shared expiry timestamp for the localStorage mirror. */
+  e?: number;
+  /** Highest shard index written for this version (inclusive). */
+  maxShard: number;
 }
 
 /**
@@ -83,6 +97,7 @@ export class ReleaseHighlighter {
   private ui: Ui | null = null;
   private running = false;
   private starting = false;
+  private persistenceWarningShown = false;
   private boundReposition: (() => void) | null = null;
   private boundKeydown: ((e: KeyboardEvent) => void) | null = null;
   private repositionFrame = 0;
@@ -96,10 +111,20 @@ export class ReleaseHighlighter {
   private constructor(options: InternalOptions) {
     this.options = options;
     this.steps = [...options.steps];
-    const cookieDays = options.cookieDays ?? 180;
+    const requestedCookieDays = options.cookieDays ?? 180;
+    const cookieDays = Number.isFinite(requestedCookieDays)
+      ? Math.max(0, requestedCookieDays)
+      : 180;
+    // Session cookies (cookieDays === 0) are not mirrored to localStorage,
+    // otherwise progress would outlive the browser session.
+    const useCookieFallback =
+      (options.storage == null || options.storage === "cookie") &&
+      cookieDays > 0;
     this.config = {
       labels: { ...DEFAULT_LABELS, ...options.labels },
       storage: resolveStorage(options.storage, cookieDays),
+      fallbackStorage: useCookieFallback ? localStorageAdapter() : null,
+      fallbackDays: useCookieFallback ? cookieDays : null,
       storageKey: options.storageKey ?? "release_highlighter",
       seenValue: options.version ?? null,
       force: options.force ?? false,
@@ -172,6 +197,12 @@ export class ReleaseHighlighter {
     try {
       if (this.config.injectStyles) injectStyles();
       if (this.isExpired()) return;
+      if (!this.config.seenValue && this.steps.length > 0) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "ReleaseHighlighter: manifest has no 'version'; seen-step progress will not persist",
+        );
+      }
 
       this.collectSteps();
       if (this.active.length === 0) return;
@@ -212,25 +243,193 @@ export class ReleaseHighlighter {
   }
 
   /**
-   * Stable identifier for a step, used for per-step "seen" persistence. Uses
-   * the resolved CSS selector target (derived from `targetClass` for manifest
-   * steps), which is unique and stable across pages.
+   * Build the storage key for a shard. The version remains in the value rather
+   * than the key, so a new release reuses existing cookie slots instead of
+   * continuously increasing the site's cookie count.
+   *
+   * @param shard Zero-based shard number
+   * @returns Storage key for that shard
    * @internal
    */
-  private stepId(step: Step): string {
-    return typeof step.target === "string" ? step.target : "";
+  private shardKey(shard: number): string {
+    return `${this.config.storageKey}.seen.${shard}`;
+  }
+
+  /** Storage key for journey-level seen metadata.
+   * @internal
+   */
+  private metaKey(): string {
+    return `${this.config.storageKey}.seen.meta`;
   }
 
   /**
-   * Read the set of step ids already seen for the current version. Returns an
-   * empty set when there is no version, on a version mismatch (a new release
-   * resets progress), or when the stored value is missing/legacy/malformed.
+   * Remove a key from the primary adapter and the cookie fallback mirror.
+   *
+   * @param key Storage key to clear
    * @internal
    */
-  private getSeenSet(): Set<string> {
-    if (this.config.force || !this.config.seenValue) return new Set();
-    const raw = this.config.storage.get(this.config.storageKey);
-    if (!raw) return new Set();
+  private removeKey(key: string): void {
+    this.config.storage.remove?.(key);
+    this.config.fallbackStorage?.remove?.(key);
+  }
+
+  /**
+   * Inspect journey metadata without applying current-version filtering beyond
+   * structural validation.
+   *
+   * @param raw Serialized metadata
+   * @returns Structured metadata status
+   * @internal
+   */
+  private inspectMeta(raw: string | null):
+    | { status: "missing" }
+    | { status: "ok"; meta: SeenMeta }
+    | { status: "expired"; maxShard: number }
+    | { status: "foreign"; maxShard: number } {
+    if (!raw || !this.config.seenValue) return { status: "missing" };
+    try {
+      const parsed = JSON.parse(raw) as Partial<SeenMeta>;
+      if (
+        !parsed ||
+        typeof parsed.v !== "string" ||
+        !Number.isInteger(parsed.maxShard) ||
+        (parsed.maxShard as number) < 0
+      ) {
+        return { status: "missing" };
+      }
+      const maxShard = parsed.maxShard as number;
+      if (parsed.v !== this.config.seenValue) {
+        return { status: "foreign", maxShard };
+      }
+      if (
+        parsed.e != null &&
+        !(
+          typeof parsed.e === "number" &&
+          Number.isFinite(parsed.e) &&
+          Date.now() < parsed.e
+        )
+      ) {
+        return { status: "expired", maxShard };
+      }
+      return {
+        status: "ok",
+        meta: {
+          v: parsed.v,
+          maxShard,
+          ...(typeof parsed.e === "number" ? { e: parsed.e } : {}),
+        },
+      };
+    } catch {
+      return { status: "missing" };
+    }
+  }
+
+  /**
+   * Read journey metadata, merging cookie + localStorage mirrors.
+   *
+   * @returns Current-version metadata status from primary/fallback
+   * @internal
+   */
+  private readMetaState():
+    | { status: "missing" }
+    | { status: "ok"; meta: SeenMeta }
+    | { status: "expired"; maxShard: number }
+    | { status: "foreign"; maxShard: number } {
+    const key = this.metaKey();
+    const primary = this.inspectMeta(this.config.storage.get(key));
+    const fallback = this.config.fallbackStorage
+      ? this.inspectMeta(this.config.fallbackStorage.get(key))
+      : { status: "missing" as const };
+
+    if (primary.status === "ok" || fallback.status === "ok") {
+      const a = primary.status === "ok" ? primary.meta : null;
+      const b = fallback.status === "ok" ? fallback.meta : null;
+      return {
+        status: "ok",
+        meta: {
+          v: this.config.seenValue as string,
+          maxShard: Math.max(a?.maxShard ?? -1, b?.maxShard ?? -1),
+          ...(a?.e != null
+            ? { e: a.e }
+            : b?.e != null
+              ? { e: b.e }
+              : {}),
+        },
+      };
+    }
+    if (primary.status === "expired" || fallback.status === "expired") {
+      return {
+        status: "expired",
+        maxShard: Math.max(
+          primary.status === "expired" ? primary.maxShard : -1,
+          fallback.status === "expired" ? fallback.maxShard : -1,
+        ),
+      };
+    }
+    if (primary.status === "foreign" || fallback.status === "foreign") {
+      return {
+        status: "foreign",
+        maxShard: Math.max(
+          primary.status === "foreign" ? primary.maxShard : -1,
+          fallback.status === "foreign" ? fallback.maxShard : -1,
+        ),
+      };
+    }
+    return { status: "missing" };
+  }
+
+  /**
+   * Persist journey metadata with a stable shared expiry.
+   *
+   * @param meta Metadata to store
+   * @returns Whether at least one adapter retained the value
+   * @internal
+   */
+  private writeMeta(meta: SeenMeta): boolean {
+    const key = this.metaKey();
+    const serialized = JSON.stringify(meta);
+    this.config.storage.set(key, serialized);
+    if (this.config.fallbackStorage) {
+      this.config.fallbackStorage.set(key, serialized);
+    }
+    return this.verifyWrite(key, serialized, -1);
+  }
+
+  /**
+   * Create or reuse journey metadata for the current version. Expiry is set
+   * once per version so later shard writes cannot leave older shards expired.
+   *
+   * @param minShard Shard that must be covered by maxShard
+   * @returns Metadata for subsequent shard writes
+   * @internal
+   */
+  private ensureMeta(minShard: number): SeenMeta | null {
+    if (!this.config.seenValue) return null;
+    const state = this.readMetaState();
+    const existing = state.status === "ok" ? state.meta : null;
+    const meta: SeenMeta = {
+      v: this.config.seenValue,
+      maxShard: Math.max(existing?.maxShard ?? -1, minShard),
+      ...(existing?.e != null
+        ? { e: existing.e }
+        : this.config.fallbackDays != null
+          ? { e: Date.now() + this.config.fallbackDays * 864e5 }
+          : {}),
+    };
+    this.writeMeta(meta);
+    return meta;
+  }
+
+  /**
+   * Parse one persisted shard for the current version.
+   *
+   * @param raw Serialized shard value
+   * @param shard Expected shard number
+   * @returns Valid indexes belonging to the shard, or null for absent/invalid state
+   * @internal
+   */
+  private parseShard(raw: string | null, shard: number): Set<number> | null {
+    if (!raw || !this.config.seenValue) return null;
     try {
       const parsed = JSON.parse(raw) as Partial<SeenState>;
       if (
@@ -238,31 +437,299 @@ export class ReleaseHighlighter {
         parsed.v === this.config.seenValue &&
         Array.isArray(parsed.seen)
       ) {
+        const min = shard * SEEN_SHARD_SIZE;
+        const max = Math.min(min + SEEN_SHARD_SIZE, this.steps.length);
         return new Set(
-          parsed.seen.filter((x): x is string => typeof x === "string"),
+          parsed.seen.filter(
+            (value): value is number =>
+              Number.isInteger(value) && value >= min && value < max,
+          ),
         );
       }
     } catch {
-      /* legacy or malformed value: treat as nothing seen */
+      /* malformed state is treated as an absent shard */
     }
-    return new Set();
+    return null;
   }
 
   /**
-   * Mark a single step id as seen for the current version and persist it.
-   * No-op when forcing, when there is no version, or when the id is empty.
+   * Read one shard, merging the primary adapter with localStorage fallback
+   * state when cookie persistence is selected.
+   *
+   * @param shard Zero-based shard number
+   * @returns Seen indexes and whether current-version shard state was found
    * @internal
    */
-  private markStepSeen(id: string): void {
-    if (this.config.force || !this.config.seenValue || !id) return;
-    const set = this.getSeenSet();
-    if (set.has(id)) return;
-    set.add(id);
+  private readShard(shard: number): {
+    seen: Set<number>;
+    found: boolean;
+  } {
+    const key = this.shardKey(shard);
+    const primary = this.parseShard(this.config.storage.get(key), shard);
+    const fallback = this.config.fallbackStorage
+      ? this.parseShard(this.config.fallbackStorage.get(key), shard)
+      : null;
+    return {
+      seen: new Set([...(primary ?? []), ...(fallback ?? [])]),
+      found: primary !== null || fallback !== null,
+    };
+  }
+
+  /**
+   * Verify that a write stuck in the primary adapter and/or cookie fallback.
+   * Warns once when persistence is unavailable, and also when the configured
+   * localStorage mirror fails even if the cookie write succeeded.
+   *
+   * @param key Storage key that was written
+   * @param serialized Expected serialized value
+   * @param shard Shard number for diagnostics, or -1 for metadata
+   * @returns Whether at least one adapter retained the value
+   * @internal
+   */
+  private verifyWrite(
+    key: string,
+    serialized: string,
+    shard: number,
+  ): boolean {
+    const primarySaved = this.config.storage.get(key) === serialized;
+    const fallbackConfigured = this.config.fallbackStorage != null;
+    const fallbackSaved = fallbackConfigured
+      ? this.config.fallbackStorage?.get(key) === serialized
+      : true;
+
+    if (!primarySaved && !fallbackSaved) {
+      if (!this.persistenceWarningShown) {
+        this.persistenceWarningShown = true;
+        // eslint-disable-next-line no-console
+        console.warn(
+          `ReleaseHighlighter: unable to persist seen steps${
+            shard >= 0 ? ` (first failed shard: ${shard})` : " metadata"
+          }`,
+        );
+      }
+      return false;
+    }
+
+    if (
+      fallbackConfigured &&
+      !fallbackSaved &&
+      !this.persistenceWarningShown
+    ) {
+      this.persistenceWarningShown = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `ReleaseHighlighter: localStorage mirror failed${
+          shard >= 0 ? ` for shard ${shard}` : " for seen metadata"
+        }`,
+      );
+    }
+
+    return primarySaved || (fallbackConfigured && fallbackSaved === true);
+  }
+
+  /**
+   * Persist one shard. Cookie writes are verified by reading them back; if a
+   * browser rejects or evicts the cookie, localStorage retains the same shard.
+   *
+   * @param shard Zero-based shard number
+   * @param seen Seen indexes belonging to the shard
+   * @returns Whether at least one adapter retained the shard
+   * @internal
+   */
+  private writeShard(shard: number, seen: Set<number>): boolean {
+    if (!this.config.seenValue) return false;
+    const key = this.shardKey(shard);
     const state: SeenState = {
       v: this.config.seenValue,
-      seen: Array.from(set),
+      seen: Array.from(seen).sort((a, b) => a - b),
     };
-    this.config.storage.set(this.config.storageKey, JSON.stringify(state));
+    const serialized = JSON.stringify(state);
+    this.config.storage.set(key, serialized);
+    if (this.config.fallbackStorage) {
+      this.config.fallbackStorage.set(key, serialized);
+    }
+    return this.verifyWrite(key, serialized, shard);
+  }
+
+  /**
+   * Read legacy selector-based state from the unsharded storage key and map it
+   * to manifest indexes. Numeric legacy values are accepted too.
+   *
+   * @returns Migrated indexes, or null when no compatible legacy state exists
+   * @internal
+   */
+  private readLegacySeenSet(): Set<number> | null {
+    if (!this.config.seenValue) return null;
+    const primary = this.config.storage.get(this.config.storageKey);
+    const fallback = this.config.fallbackStorage?.get(this.config.storageKey);
+    const raw = primary ?? fallback ?? null;
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as {
+        v?: unknown;
+        seen?: unknown;
+        e?: unknown;
+      };
+      if (
+        parsed.v !== this.config.seenValue ||
+        !Array.isArray(parsed.seen)
+      ) {
+        return null;
+      }
+      if (
+        parsed.e != null &&
+        !(
+          typeof parsed.e === "number" &&
+          Number.isFinite(parsed.e) &&
+          Date.now() < parsed.e
+        )
+      ) {
+        this.removeKey(this.config.storageKey);
+        return null;
+      }
+
+      const migrated = new Set<number>();
+      for (const value of parsed.seen) {
+        if (
+          Number.isInteger(value) &&
+          (value as number) >= 0 &&
+          (value as number) < this.steps.length
+        ) {
+          migrated.add(value as number);
+        } else if (typeof value === "string") {
+          this.steps.forEach((step, index) => {
+            if (step.target === value) migrated.add(index);
+          });
+        }
+      }
+      return migrated;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Persist an entire seen set into independent 250-index shards.
+   *
+   * @param seen Manifest indexes to persist
+   * @returns Whether every required shard (including an empty shard-0 tombstone) was saved
+   * @internal
+   */
+  private writeSeenSet(seen: Set<number>): boolean {
+    const shards = new Map<number, Set<number>>();
+    for (const stepIndex of seen) {
+      const shard = Math.floor(stepIndex / SEEN_SHARD_SIZE);
+      const values = shards.get(shard) ?? new Set<number>();
+      values.add(stepIndex);
+      shards.set(shard, values);
+    }
+    if (!shards.has(0)) shards.set(0, new Set());
+
+    const maxShard = Math.max(...shards.keys());
+    const meta = this.ensureMeta(maxShard);
+    if (!meta) return false;
+
+    let ok = true;
+    for (const [shard, values] of shards) {
+      ok = this.writeShard(shard, values) && ok;
+    }
+    return ok;
+  }
+
+  /**
+   * Drop shard/meta keys beyond the active range after a version change or
+   * manifest shrink so cookie slots can be reused.
+   *
+   * @param keepThrough Inclusive highest shard to retain
+   * @param previousMax Inclusive highest shard previously recorded
+   * @internal
+   */
+  private pruneShards(keepThrough: number, previousMax: number): void {
+    for (let shard = keepThrough + 1; shard <= previousMax; shard += 1) {
+      this.removeKey(this.shardKey(shard));
+    }
+  }
+
+  /**
+   * Read all seen indexes for the current version. Selector-based state from
+   * releases before sharding is migrated and cleared only after every required
+   * shard verifies successfully.
+   *
+   * @returns Seen manifest indexes
+   * @internal
+   */
+  private getSeenSet(): Set<number> {
+    if (this.config.force || !this.config.seenValue) return new Set();
+
+    const neededShards = Math.max(
+      1,
+      Math.ceil(this.steps.length / SEEN_SHARD_SIZE),
+    );
+    const metaState = this.readMetaState();
+
+    if (metaState.status === "expired") {
+      this.removeKey(this.metaKey());
+      this.pruneShards(-1, Math.max(metaState.maxShard, neededShards - 1));
+      this.removeKey(this.config.storageKey);
+      return new Set();
+    }
+
+    if (metaState.status === "foreign") {
+      // Reuse cookie slots from a previous version.
+      this.removeKey(this.metaKey());
+      this.pruneShards(-1, Math.max(metaState.maxShard, neededShards - 1));
+    }
+
+    const meta = metaState.status === "ok" ? metaState.meta : null;
+    if (meta) this.pruneShards(neededShards - 1, meta.maxShard);
+
+    const seen = new Set<number>();
+    const shardCount = Math.max(neededShards, (meta?.maxShard ?? -1) + 1);
+    for (let shard = 0; shard < shardCount; shard += 1) {
+      const state = this.readShard(shard);
+      for (const stepIndex of state.seen) seen.add(stepIndex);
+    }
+
+    const legacy = this.readLegacySeenSet();
+    if (legacy) {
+      for (const stepIndex of legacy) seen.add(stepIndex);
+      // Keep merging legacy until every shard write verifies, then delete it so
+      // expired shards cannot resurrect progress from the old blob.
+      if (this.writeSeenSet(seen)) {
+        this.removeKey(this.config.storageKey);
+      }
+    }
+
+    return seen;
+  }
+
+  /**
+   * Mark a manifest step index as seen. Shards are created lazily and contain
+   * at most 250 indexes, so the public API has no manifest step limit.
+   *
+   * @param stepIndex Zero-based position in the manifest
+   * @internal
+   */
+  private markStepSeen(stepIndex: number): void {
+    if (
+      this.config.force ||
+      !this.config.seenValue ||
+      !Number.isInteger(stepIndex) ||
+      stepIndex < 0
+    ) {
+      return;
+    }
+    const shard = Math.floor(stepIndex / SEEN_SHARD_SIZE);
+    this.ensureMeta(shard);
+    // Re-read immediately before writing so concurrent tabs are less likely to
+    // clobber each other's indexes.
+    const state = this.readShard(shard);
+    if (state.seen.has(stepIndex)) return;
+    state.seen.add(stepIndex);
+    const latest = this.readShard(shard);
+    for (const value of latest.seen) state.seen.add(value);
+    state.seen.add(stepIndex);
+    this.writeShard(shard, state.seen);
   }
 
   /**
@@ -275,15 +742,14 @@ export class ReleaseHighlighter {
   private collectSteps(): void {
     const seen = this.getSeenSet();
     const active: ActiveStep[] = [];
-    for (const step of this.steps) {
-      const id = this.stepId(step);
-      if (id && seen.has(id)) continue; // already shown for this version
+    for (const [stepIndex, step] of this.steps.entries()) {
+      if (seen.has(stepIndex)) continue; // already shown for this version
       // Presence-based (not viewport-based) so the step count is stable
       // regardless of where the user has scrolled. Only the first matching
       // element per target is used.
       const element = pickTarget(step.target, this.config.skipHiddenTargets);
       if (!element) continue;
-      active.push({ step, element, id });
+      active.push({ step, element, stepIndex });
     }
     this.active = active;
   }
@@ -297,7 +763,7 @@ export class ReleaseHighlighter {
   private showStep(index: number): void {
     if (!this.ui || this.active.length === 0) return;
     this.currentIndex = Math.max(0, Math.min(index, this.active.length - 1));
-    const { step, element, id } = this.active[this.currentIndex];
+    const { step, element, stepIndex } = this.active[this.currentIndex];
     const api = this.buildApi();
 
     if (
@@ -310,7 +776,7 @@ export class ReleaseHighlighter {
     this.renderCurrent();
     // Persist this step as seen the moment it is displayed, so it will not
     // reappear on other pages within the same version.
-    this.markStepSeen(id);
+    this.markStepSeen(stepIndex);
     this.options.on?.step?.(step, api);
   }
 
