@@ -1,7 +1,8 @@
 /**
  * Release Highlighter - Storage adapters
  *
- * @file Cookie, localStorage, and memory storage adapters.
+ * @file Built-in cookie persistence and an internal localStorage mirror used to
+ * harden the cookie path. Custom adapters are supplied by integrators.
  * @license MIT
  *
  * Simple release-journey / product-tour plugin for the web. JSON-manifest driven.
@@ -73,10 +74,11 @@ function removeCookie(name: string): void {
 }
 
 /**
- * Cookie-backed storage adapter.
+ * Cookie-backed storage adapter (the built-in persistence backend).
  *
  * @param days Lifetime for the cookie value in days; <= 0 means session cookies
  * @returns StorageAdapter using document.cookie
+ * @public
  */
 export function cookieStorage(days: number): StorageAdapter {
   return {
@@ -87,11 +89,14 @@ export function cookieStorage(days: number): StorageAdapter {
 }
 
 /**
- * localStorage-backed storage adapter (catches quota/privacy errors).
+ * Internal localStorage mirror used only to harden the built-in cookie path.
+ * Not part of the public storage menu — integrators who want localStorage (or
+ * anything else) should pass their own {@link StorageAdapter}.
  *
  * @returns StorageAdapter using window.localStorage
+ * @internal
  */
-export function localStorageAdapter(): StorageAdapter {
+export function cookieMirrorStorage(): StorageAdapter {
   return {
     get: (key) => {
       try {
@@ -118,42 +123,30 @@ export function localStorageAdapter(): StorageAdapter {
 }
 
 /**
- * In-memory storage adapter (process lifetime).
- *
- * @returns StorageAdapter backed by a Map
- */
-export function memoryStorage(): StorageAdapter {
-  const map = new Map<string, string>();
-  return {
-    get: (key) => (map.has(key) ? (map.get(key) as string) : null),
-    set: (key, value) => {
-      map.set(key, value);
-    },
-    remove: (key) => {
-      map.delete(key);
-    },
-  };
-}
-
-/**
  * Resolve a storage configuration to a concrete adapter.
  *
- * @param option Either a built-in adapter name or a custom adapter
- * @param cookieDays Lifetime for cookies when using the cookie adapter
+ * @param option `'cookie'`, omitted (defaults to cookie), or a custom adapter
+ * @param cookieDays Lifetime for cookies when using the built-in cookie adapter
  * @returns Concrete StorageAdapter
+ * @internal
  */
 export function resolveStorage(
   option: StorageOption | undefined,
   cookieDays: number,
 ): StorageAdapter {
   if (option && typeof option === "object") return option;
-  switch (option) {
-    case "localStorage":
-      return localStorageAdapter();
-    case "memory":
-      return memoryStorage();
-    case "cookie":
-    default:
-      return cookieStorage(cookieDays);
-  }
+  return cookieStorage(cookieDays);
+}
+
+/**
+ * True when the caller asked for the built-in cookie backend (default).
+ *
+ * @param option Storage option from ReleaseHighlighterOptions
+ * @returns Whether cookie hardening (mirror) should be enabled
+ * @internal
+ */
+export function isBuiltInCookieStorage(
+  option: StorageOption | undefined,
+): boolean {
+  return option == null || option === "cookie";
 }

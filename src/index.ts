@@ -14,7 +14,7 @@
 
 export { ReleaseHighlighter } from "./core";
 export { loadJson } from "./loaders";
-export { cookieStorage, localStorageAdapter, memoryStorage } from "./storage";
+export { cookieStorage } from "./storage";
 
 export type {
   ReleaseHighlighterOptions,

@@ -108,6 +108,9 @@ export interface Theme {
  * Pluggable key/value persistence. Release Highlighter writes numeric seen-step
  * indexes in independent 250-index shards. `remove` is optional but recommended
  * so expired/migrated keys can be cleaned up.
+ *
+ * Built-in backend is cookie only. Pass a custom adapter to use your own store
+ * (localStorage, IndexedDB, remote API, …).
  */
 export interface StorageAdapter {
   get(key: string): string | null;
@@ -115,11 +118,11 @@ export interface StorageAdapter {
   remove?(key: string): void;
 }
 
-export type StorageOption =
-  | "cookie"
-  | "localStorage"
-  | "memory"
-  | StorageAdapter;
+/**
+ * Persistence configuration: the built-in `'cookie'` backend, or a custom
+ * {@link StorageAdapter}. Additional built-ins may be added later.
+ */
+export type StorageOption = "cookie" | StorageAdapter;
 
 /**
  * Lifecycle hooks.
@@ -143,9 +146,10 @@ export interface ReleaseHighlighterOptions {
   /** Theme overrides mapped to CSS variables. */
   theme?: Theme;
 
-  /** Persistence backend. When set to the built-in `'cookie'` option (the
-   * default), shards are mirrored to localStorage so progress survives
-   * rejected or evicted cookies. Custom adapters are not mirrored.
+  /**
+   * Persistence backend. Default is the built-in cookie store (hardened with an
+   * internal localStorage mirror). Pass a custom {@link StorageAdapter} to own
+   * persistence yourself — custom adapters are not mirrored.
    * @default 'cookie'
    */
   storage?: StorageOption;
@@ -154,7 +158,7 @@ export interface ReleaseHighlighterOptions {
    * @default 'release_highlighter'
    */
   storageKey?: string;
-  /** How long built-in cookie shards and their localStorage mirrors live.
+  /** How long built-in cookie shards and their internal mirror live.
    * `0` creates session cookies and disables the mirror.
    * @default 180
    */

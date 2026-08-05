@@ -21,7 +21,7 @@ import type {
   ReleaseHighlighterOptions,
   InternalOptions,
 } from "./types";
-import { localStorageAdapter, resolveStorage } from "./storage";
+import { cookieMirrorStorage, isBuiltInCookieStorage, resolveStorage } from "./storage";
 import { injectStyles } from "./styles";
 import { isElementRendered, pickTarget } from "./dom";
 import { Ui } from "./ui";
@@ -115,15 +115,14 @@ export class ReleaseHighlighter {
     const cookieDays = Number.isFinite(requestedCookieDays)
       ? Math.max(0, requestedCookieDays)
       : 180;
-    // Session cookies (cookieDays === 0) are not mirrored to localStorage,
-    // otherwise progress would outlive the browser session.
+    // Session cookies (cookieDays === 0) are not mirrored, otherwise progress
+    // would outlive the browser session. Custom adapters are never mirrored.
     const useCookieFallback =
-      (options.storage == null || options.storage === "cookie") &&
-      cookieDays > 0;
+      isBuiltInCookieStorage(options.storage) && cookieDays > 0;
     this.config = {
       labels: { ...DEFAULT_LABELS, ...options.labels },
       storage: resolveStorage(options.storage, cookieDays),
-      fallbackStorage: useCookieFallback ? localStorageAdapter() : null,
+      fallbackStorage: useCookieFallback ? cookieMirrorStorage() : null,
       fallbackDays: useCookieFallback ? cookieDays : null,
       storageKey: options.storageKey ?? "release_highlighter",
       seenValue: options.version ?? null,
@@ -453,22 +452,29 @@ export class ReleaseHighlighter {
   }
 
   /**
-   * Read one shard, merging the primary adapter with localStorage fallback
-   * state when cookie persistence is selected.
+   * Read one shard from the primary store. For the built-in cookie path, the
+   * internal mirror is merged when the cookie is present, or used alone only
+   * when journey metadata is still valid (so orphan mirrors cannot outlive
+   * cookieDays).
    *
    * @param shard Zero-based shard number
+   * @param trustMirrorAlone Whether a valid meta allows mirror-only recovery
    * @returns Seen indexes and whether current-version shard state was found
    * @internal
    */
-  private readShard(shard: number): {
+  private readShard(
+    shard: number,
+    trustMirrorAlone = false,
+  ): {
     seen: Set<number>;
     found: boolean;
   } {
     const key = this.shardKey(shard);
     const primary = this.parseShard(this.config.storage.get(key), shard);
-    const fallback = this.config.fallbackStorage
-      ? this.parseShard(this.config.fallbackStorage.get(key), shard)
-      : null;
+    const fallback =
+      this.config.fallbackStorage && (primary !== null || trustMirrorAlone)
+        ? this.parseShard(this.config.fallbackStorage.get(key), shard)
+        : null;
     return {
       seen: new Set([...(primary ?? []), ...(fallback ?? [])]),
       found: primary !== null || fallback !== null,
@@ -518,7 +524,7 @@ export class ReleaseHighlighter {
       this.persistenceWarningShown = true;
       // eslint-disable-next-line no-console
       console.warn(
-        `ReleaseHighlighter: localStorage mirror failed${
+        `ReleaseHighlighter: cookie mirror failed${
           shard >= 0 ? ` for shard ${shard}` : " for seen metadata"
         }`,
       );
@@ -685,8 +691,9 @@ export class ReleaseHighlighter {
 
     const seen = new Set<number>();
     const shardCount = Math.max(neededShards, (meta?.maxShard ?? -1) + 1);
+    const trustMirrorAlone = meta != null;
     for (let shard = 0; shard < shardCount; shard += 1) {
-      const state = this.readShard(shard);
+      const state = this.readShard(shard, trustMirrorAlone);
       for (const stepIndex of state.seen) seen.add(stepIndex);
     }
 
@@ -720,13 +727,15 @@ export class ReleaseHighlighter {
       return;
     }
     const shard = Math.floor(stepIndex / SEEN_SHARD_SIZE);
-    this.ensureMeta(shard);
+    const meta = this.ensureMeta(shard);
     // Re-read immediately before writing so concurrent tabs are less likely to
-    // clobber each other's indexes.
-    const state = this.readShard(shard);
+    // clobber each other's indexes. Trust the mirror alone only while journey
+    // metadata is valid.
+    const trustMirrorAlone = meta != null;
+    const state = this.readShard(shard, trustMirrorAlone);
     if (state.seen.has(stepIndex)) return;
     state.seen.add(stepIndex);
-    const latest = this.readShard(shard);
+    const latest = this.readShard(shard, trustMirrorAlone);
     for (const value of latest.seen) state.seen.add(value);
     state.seen.add(stepIndex);
     this.writeShard(shard, state.seen);
