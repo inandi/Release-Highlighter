@@ -8,11 +8,11 @@
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.2
+ * @version 1.1.6
  * @copyright (c) 2026 Gobinda Nandi
  */
 
-import type { Step } from "./types";
+import type { ManifestStep, Step } from "./types";
 
 /**
  * Fetch plain text with same-origin credentials.
@@ -96,8 +96,8 @@ export async function loadJson(
         "each step must have a non-empty string 'targetClass' (a CSS class name)",
       );
     }
-    const { targetClass, ...rest } = raw;
-    steps.push({ ...rest, target: classToSelector(targetClass) } as Step);
+    const { targetClass, ...rest } = raw as ManifestStep;
+    steps.push({ ...rest, target: classToSelector(targetClass) });
   }
 
   return { version: data.version, steps, expires: data.expires };

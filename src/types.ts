@@ -8,7 +8,7 @@
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.2
+ * @version 1.1.6
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -19,7 +19,8 @@
 export type Placement = "auto" | "top" | "bottom" | "left" | "right";
 
 /**
- * CSS selector used to find the element to spotlight.
+ * CSS selector used to find the element to spotlight. Produced from a
+ * manifest step's `targetClass`.
  */
 export type StepTarget = string;
 
@@ -47,12 +48,10 @@ export interface Labels {
 }
 
 /**
- * A single tour step as defined in the JSON manifest.
+ * Presentation fields shared by manifest steps and resolved runtime steps.
  * All fields are JSON-serializable.
  */
-export interface Step {
-  /** CSS selector of the element to spotlight. */
-  target: StepTarget;
+export interface StepContent {
   /** Optional bold heading shown above the body. */
   title?: string;
   /** Body content. Plain text unless `html` is true. */
@@ -67,6 +66,24 @@ export interface Step {
   labels?: Partial<Labels>;
   /** Scroll the target into view before showing. Defaults to the global option. */
   scrollIntoView?: boolean;
+}
+
+/**
+ * A single tour step exactly as written in the JSON manifest. Elements are
+ * targeted by a bare CSS class name; `loadJson` converts it to a selector.
+ */
+export interface ManifestStep extends StepContent {
+  /** Bare CSS class name of the element to spotlight (no leading dot). */
+  targetClass: string;
+}
+
+/**
+ * A tour step after the manifest has been loaded, where `targetClass` has been
+ * resolved into a CSS selector.
+ */
+export interface Step extends StepContent {
+  /** CSS selector of the element to spotlight, derived from `targetClass`. */
+  target: StepTarget;
 }
 
 /**

@@ -190,7 +190,7 @@ been seen, the manifest `version` changes (which resets progress), or `expires`
 passes.
 
 
-The dev server the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
+The dev server serves the repo root at `http://localhost:5174/`. Open the `/demo/` page to try it out.
 The demo runs a journey from a JSON manifest. Serve it over HTTP (not `file://`)
 because the manifest is fetched with `fetch()`.
 
