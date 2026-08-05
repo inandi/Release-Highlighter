@@ -8,7 +8,7 @@
  *
  * @author Gobinda Nandi <gobinda.nandi.public@gmail.com>
  * @since 1.1.1
- * @version 1.1.2
+ * @version 1.1.6
  * @copyright (c) 2026 Gobinda Nandi
  */
 
@@ -82,6 +82,7 @@ export class ReleaseHighlighter {
   private currentIndex = 0;
   private ui: Ui | null = null;
   private running = false;
+  private starting = false;
   private boundReposition: (() => void) | null = null;
   private boundKeydown: ((e: KeyboardEvent) => void) | null = null;
   private repositionFrame = 0;
@@ -159,14 +160,15 @@ export class ReleaseHighlighter {
 
   /**
    * Start the journey if eligible (not expired, and at least one unseen step is
-   * present on the page). Injects styles, mounts UI, binds listeners, and shows
-   * the first unseen step.
+   * present on the page). Concurrent/re-entrant calls are ignored. Injects
+   * styles, mounts UI, binds listeners, and shows the first unseen step.
    *
    * @public
    * @see ReleaseHighlighterOptions
    */
   async start(): Promise<void> {
-    if (this.running) return;
+    if (this.running || this.starting) return;
+    this.starting = true;
     try {
       if (this.config.injectStyles) injectStyles();
       if (this.isExpired()) return;
@@ -189,9 +191,12 @@ export class ReleaseHighlighter {
       this.options.on?.start?.(api);
       this.showStep(0);
     } catch (err) {
+      this.end();
       // Never break the host page.
       // eslint-disable-next-line no-console
       console.warn("ReleaseHighlighter:", err);
+    } finally {
+      this.starting = false;
     }
   }
 
@@ -396,14 +401,17 @@ export class ReleaseHighlighter {
   }
 
   /**
-   * Shared teardown: unbind listeners and destroy the UI. Leaves the instance
-   * reusable. Per-step "seen" state is persisted at display time, not here.
+   * Shared teardown: unbind listeners, destroy the UI, and release target
+   * element references. Leaves the instance reusable. Per-step "seen" state is
+   * persisted at display time, not here.
    * @internal
    */
   private end(): void {
     this.unbindGlobalListeners();
     this.ui?.destroy();
     this.ui = null;
+    this.active = [];
+    this.currentIndex = 0;
     this.running = false;
   }
 
