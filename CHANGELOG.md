@@ -1,3 +1,10 @@
+# Release v1.1.8 - 2026-08-05
+
+## Acknowledgments
+- Update documentation
+
+---
+
 # Release v1.1.7 - 2026-08-05
 
 ## Acknowledgments
