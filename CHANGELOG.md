@@ -1,3 +1,10 @@
+# Release v1.1.7 - 2026-08-05
+
+## Acknowledgments
+- Release failed, retry 1
+
+---
+
 # Release v1.1.6 - 2026-08-05
 
 ## New Features
