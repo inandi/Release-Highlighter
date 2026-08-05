@@ -28,10 +28,26 @@ async function fetchText(url: string): Promise<string> {
 }
 
 /**
+ * Convert a bare CSS class name into a valid class selector, tolerating an
+ * accidental leading dot and escaping special characters when supported.
+ *
+ * @param className Bare CSS class name (e.g. "release-highlighter--cart-summary")
+ * @returns A class selector (e.g. ".release-highlighter--cart-summary")
+ */
+function classToSelector(className: string): string {
+    const cleaned = className.trim().replace(/^\.+/, "");
+    const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(cleaned) : cleaned;
+    return `.${escaped}`;
+}
+
+/**
  * Load a JSON manifest from `url`.
  *
  * Expected shape:
- * `{ "version": "2.1.0", "expires?": "…", "steps": [ { "target": ".x", "body": "…" } ] }`
+ * `{ "version": "2.1.0", "expires?": "…", "steps": [ { "targetClass": "x", "body": "…" } ] }`
+ *
+ * Each step targets an element by a bare CSS class name via `targetClass`, which
+ * is normalized into the runtime `target` selector.
  *
  * @param url Resource URL
  * @returns Object containing version, steps, and optional expires
@@ -64,10 +80,11 @@ export async function loadJson(
 
     const steps: Step[] = [];
     for (const raw of data.steps) {
-        if (!raw || typeof raw !== "object" || typeof raw.target !== "string" || !raw.target.trim()) {
-            throw new Error("each step must have a non-empty string 'target' (CSS selector)");
+        if (!raw || typeof raw !== "object" || typeof raw.targetClass !== "string" || !raw.targetClass.trim()) {
+            throw new Error("each step must have a non-empty string 'targetClass' (a CSS class name)");
         }
-        steps.push(raw as Step);
+        const { targetClass, ...rest } = raw;
+        steps.push({ ...rest, target: classToSelector(targetClass) } as Step);
     }
 
     return { version: data.version, steps, expires: data.expires };

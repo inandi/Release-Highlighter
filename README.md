@@ -36,9 +36,9 @@ Or via CDN (browser global `ReleaseHighlighter`):
   "version": "2.1.0",
   "expires": "2026-12-31T23:59:59Z",
   "steps": [
-    { "target": ".cart-summary", "title": "New cart", "body": "Totals are clearer.", "placement": "bottom" },
-    { "target": "#avatar", "body": "Upload SVG avatars." },
-    { "target": ".sidebar a", "body": "Jump around faster." }
+    { "targetClass": "cart-summary", "title": "New cart", "body": "Totals are clearer.", "placement": "bottom" },
+    { "targetClass": "profile-avatar", "body": "Upload SVG avatars." },
+    { "targetClass": "sidebar-link", "body": "Jump around faster." }
   ]
 }
 ```
@@ -66,7 +66,7 @@ await rh.start();
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `target` | `string` | **Required.** CSS selector of the element to spotlight. |
+| `targetClass` | `string` | **Required.** Bare CSS class name of the element to spotlight (no leading dot). |
 | `title` | `string` | Optional heading. |
 | `body` | `string` | Optional body text. |
 | `html` | `boolean` | Treat `title`/`body` as HTML. |
